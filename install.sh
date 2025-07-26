@@ -1,88 +1,60 @@
 #!/bin/bash
 
-# YouTube TV OS Installer for Raspberry Pi 3B+
-# This script sets up everything needed for the YouTube TV OS
+echo "📺 Setting up YouTube TV OS on DietPi for Raspberry Pi 3B+..."
 
-set -e
+# Step 1: System update
+echo "🔄 Updating system packages..."
+apt update && apt upgrade -y
 
-echo "🚀 Installing YouTube TV OS for Raspberry Pi 3B+..."
+# Step 2: Install required DietPi software
+echo "📦 Installing required software packages..."
+dietpi-software install 9   # Chromium
+dietpi-software install 16  # X11
+dietpi-software install 170 # Bluetooth
+dietpi-software install 193 # ALSA
+dietpi-software install 188 # NetworkManager
+dietpi-software install 141 # Matchbox-keyboard
 
-# Check if running on Raspberry Pi
-if ! grep -q "Raspberry Pi" /proc/cpuinfo; then
-    echo "⚠️  Warning: This script is designed for Raspberry Pi. Continue anyway? (y/N)"
-    read -r response
-    if [[ ! "$response" =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
-fi
+# Step 3: Set autostart to Chromium kiosk
+echo "⚙️ Configuring autostart..."
+sed -i 's/^AUTO_START_INDEX=.*/AUTO_START_INDEX=9/' /var/lib/dietpi/dietpi-autostart
 
-# Update system
-echo "📦 Updating system packages..."
-sudo apt update && sudo apt upgrade -y
+# Step 4: Create Chromium Kiosk launcher
+echo "🚀 Creating Chromium kiosk launcher..."
+AUTOSTART_SCRIPT="/DietPi/dietpi/.chromium-autostart.sh"
+cat <<EOF > $AUTOSTART_SCRIPT
+#!/bin/bash
+xset s off
+xset -dpms
+xset s noblank
+unclutter -idle 0.5 -root &  # Hide mouse
+matchbox-keyboard &         # On-screen keyboard
+chromium \\
+  --user-agent="Mozilla/5.0 (Linux; Android 9; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.81 Safari/537.36" \\
+  --noerrdialogs --kiosk https://www.youtube.com/tv \\
+  --disable-restore-session-state --no-first-run
+EOF
 
-# Install minimal GUI (X11 + openbox) as suggested by OpenAI
-echo "📦 Installing minimal GUI components..."
-sudo apt install --no-install-recommends xserver-xorg x11-xserver-utils xinit openbox -y
+chmod +x $AUTOSTART_SCRIPT
 
-# Install required packages
-echo "📦 Installing required packages..."
-sudo apt install -y \
-    chromium-browser \
-    lightdm \
-    unclutter \
-    nodejs \
-    npm \
-    bluez \
-    bluez-tools \
-    rfkill \
-    wireless-tools \
-    wpasupplicant \
-    git \
-    curl \
-    wget \
-    vim \
-    htop
+# Step 5: Enable and start Bluetooth
+echo "📶 Configuring Bluetooth..."
+systemctl enable bluetooth
+systemctl start bluetooth
 
-# Install Node.js 18 if not already installed
-echo "📦 Checking Node.js version..."
-NODE_VERSION=$(node --version 2>/dev/null | cut -d'v' -f2 | cut -d'.' -f1 || echo "0")
-if [ "$NODE_VERSION" -lt 14 ]; then
-    echo "📦 Installing Node.js 18..."
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-    sudo apt-get install -y nodejs
-fi
+# Step 6: Autologin root on boot
+echo "🔐 Setting up autologin..."
+mkdir -p /etc/systemd/system/getty@tty1.service.d
+cat <<EOF > /etc/systemd/system/getty@tty1.service.d/autologin.conf
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
+EOF
 
-# Create installation directory
-echo "📁 Creating installation directory..."
-sudo mkdir -p /opt/youtubetv-os
-cd /opt/youtubetv-os
+# Step 7: Ensure autostart is set
+echo "✅ Finalizing autostart configuration..."
+dietpi-autostart 9
 
-# Download the project files from GitHub
-echo "📥 Downloading YouTube TV OS files..."
-if [ -d ".git" ]; then
-    echo "Repository already exists, pulling latest changes..."
-    sudo git pull
-else
-    echo "Cloning repository from GitHub..."
-    sudo git clone https://github.com/bhNibir/youtubetv-os.git .
-fi
-
-# Set permissions
-sudo chown -R pi:pi /opt/youtubetv-os
-sudo chmod +x /opt/youtubetv-os/setup.sh
-sudo chmod +x /opt/youtubetv-os/scripts/*.sh
-
-# Run setup
-echo "🔧 Running setup script..."
-sudo -u pi ./setup.sh
-
-echo "✅ Installation complete!"
-echo "📋 Next steps:"
-echo "   1. The system will reboot automatically"
-echo "   2. After reboot, the YouTube TV OS will start automatically"
-echo "   3. Access the control panel at http://localhost:8080"
-echo "   4. Use your TV remote or keyboard for navigation"
-echo ""
-echo "🔄 Rebooting system in 10 seconds... (Press Ctrl+C to cancel)"
-sleep 10
-sudo reboot
+echo "✅ Setup Complete! Rebooting into YouTube TV Kiosk Mode..."
+sleep 3
+reboot
