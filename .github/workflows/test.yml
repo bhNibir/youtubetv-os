@@ -1,0 +1,43 @@
+name: Test YouTube TV OS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Test server startup
+      run: |
+        timeout 10 node server.js &
+        sleep 3
+        curl -f http://localhost:8080 || exit 1
+        
+    - name: Check file structure
+      run: |
+        test -f server.js
+        test -f package.json
+        test -f web/index.html
+        test -f web/app.js
+        test -f web/styles.css
+        test -f install.sh
+        test -f setup.sh
+        
+    - name: Validate JSON files
+      run: |
+        node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8'))"
+        node -e "JSON.parse(require('fs').readFileSync('config/settings.json', 'utf8'))"

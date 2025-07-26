@@ -1,0 +1,113 @@
+/* Virtual Keyboard Styles */
+
+.virtual-keyboard {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border-top: 2px solid var(--bg-card);
+    padding: 20px;
+    z-index: 2000;
+    display: none;
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.virtual-keyboard.active {
+    display: block;
+}
+
+.keyboard-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.key {
+    min-width: 50px;
+    height: 50px;
+    border: none;
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.key:hover {
+    background: var(--accent-blue);
+    transform: translateY(-2px);
+}
+
+.key:active {
+    transform: translateY(0);
+    background: #1565c0;
+}
+
+.key.space {
+    min-width: 200px;
+}
+
+.key.backspace,
+.key.enter,
+.key.shift {
+    min-width: 70px;
+    background: var(--accent-orange);
+}
+
+.key.shift.active {
+    background: var(--accent-green);
+}
+
+/* Responsive keyboard */
+@media (max-width: 768px) {
+    .virtual-keyboard {
+        padding: 15px;
+    }
+    
+    .key {
+        min-width: 35px;
+        height: 40px;
+        font-size: 0.9rem;
+    }
+    
+    .key.space {
+        min-width: 150px;
+    }
+    
+    .key.backspace,
+    .key.enter,
+    .key.shift {
+        min-width: 50px;
+    }
+    
+    .keyboard-row {
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .key {
+        min-width: 28px;
+        height: 35px;
+        font-size: 0.8rem;
+    }
+    
+    .key.space {
+        min-width: 120px;
+    }
+    
+    .key.backspace,
+    .key.enter,
+    .key.shift {
+        min-width: 40px;
+    }
+}

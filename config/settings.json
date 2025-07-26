@@ -1,0 +1,44 @@
+{
+  "theme": "dark",
+  "virtualKeyboard": true,
+  "autoConnect": false,
+  "screenTimeout": 0,
+  "defaultApps": [
+    {
+      "name": "YouTube TV",
+      "url": "https://www.youtube.com/tv",
+      "icon": "▶️",
+      "color": "#ff0000"
+    },
+    {
+      "name": "Netflix",
+      "url": "https://www.netflix.com",
+      "icon": "N",
+      "color": "#e50914"
+    },
+    {
+      "name": "Disney+",
+      "url": "https://www.disneyplus.com",
+      "icon": "D+",
+      "color": "#113ccf"
+    },
+    {
+      "name": "Prime Video",
+      "url": "https://www.primevideo.com",
+      "icon": "P",
+      "color": "#00a8e1"
+    }
+  ],
+  "remoteControl": {
+    "enabled": true,
+    "keys": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight",
+      "select": "Enter",
+      "back": "Escape",
+      "home": "Home"
+    }
+  }
+}

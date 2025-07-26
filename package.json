@@ -1,0 +1,33 @@
+{
+  "name": "youtubetv-os",
+  "version": "1.0.0",
+  "description": "YouTube TV OS for Raspberry Pi 3B+",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "install-system": "./install.sh",
+    "setup": "./setup.sh"
+  },
+  "keywords": [
+    "raspberry-pi",
+    "youtube-tv",
+    "smart-tv",
+    "kiosk",
+    "tv-os"
+  ],
+  "author": "bhNibir",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bhNibir/youtubetv-os.git"
+  }
+}

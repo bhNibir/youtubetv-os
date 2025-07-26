@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube TV OS</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="virtual-keyboard.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>TV</h1>
+            </div>
+            <div class="header-right">
+                <span class="time" id="current-time">22:29</span>
+                <span class="wifi-status" id="wifi-status">📶 Home_WiFi_5G</span>
+                <span class="connection-status connected">Connected</span>
+            </div>
+        </header>
+
+        <!-- Main Control Panel -->
+        <main class="main-content" id="control-panel">
+            <!-- Control Cards -->
+            <section class="control-grid">
+                <div class="control-card wifi-card" onclick="openWifiPanel()">
+                    <div class="card-icon">📶</div>
+                    <div class="card-title">WiFi</div>
+                    <div class="card-subtitle">Connected</div>
+                </div>
+
+                <div class="control-card bluetooth-card" onclick="openBluetoothPanel()">
+                    <div class="card-icon">🔵</div>
+                    <div class="card-title">Bluetooth</div>
+                    <div class="card-subtitle">Connected</div>
+                </div>
+
+                <div class="control-card search-card" onclick="openSearchPanel()">
+                    <div class="card-icon">🔍</div>
+                    <div class="card-title">Search</div>
+                    <div class="card-subtitle">Web & Apps</div>
+                </div>
+
+                <div class="control-card power-card" onclick="openPowerPanel()">
+                    <div class="card-icon">⏻</div>
+                    <div class="card-title">Power</div>
+                    <div class="card-subtitle">Shutdown</div>
+                </div>
+
+                <div class="control-card settings-card" onclick="openSettingsPanel()">
+                    <div class="card-icon">⚙️</div>
+                    <div class="card-title">Settings</div>
+                    <div class="card-subtitle">System</div>
+                </div>
+
+                <div class="control-card theme-card" onclick="toggleTheme()">
+                    <div class="card-icon">☀️</div>
+                    <div class="card-title">Light</div>
+                    <div class="card-subtitle">Theme</div>
+                </div>
+            </section>
+
+            <!-- Apps Section -->
+            <section class="apps-section">
+                <h2>Apps</h2>
+                <div class="apps-grid">
+                    <div class="app-card youtube-card" onclick="openYouTubeTV()">
+                        <div class="app-icon">▶️</div>
+                        <div class="app-title">YouTube TV</div>
+                    </div>
+
+                    <div class="app-card netflix-card">
+                        <div class="app-icon">N</div>
+                        <div class="app-title">Netflix</div>
+                    </div>
+
+                    <div class="app-card disney-card">
+                        <div class="app-icon">D+</div>
+                        <div class="app-title">Disney+</div>
+                    </div>
+
+                    <div class="app-card prime-card">
+                        <div class="app-icon">P</div>
+                        <div class="app-title">Prime Video</div>
+                    </div>
+
+                    <div class="app-card hulu-card">
+                        <div class="app-icon">H</div>
+                        <div class="app-title">Hulu</div>
+                    </div>
+
+                    <div class="app-card spotify-card">
+                        <div class="app-icon">♪</div>
+                        <div class="app-title">Spotify</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Panels -->
+        <div id="wifi-panel" class="panel">
+            <div class="panel-header">
+                <h2>WiFi Settings</h2>
+                <button class="close-btn" onclick="closePanel()">&times;</button>
+            </div>
+            <div class="panel-content">
+                <button class="scan-btn" onclick="scanWifi()">Scan Networks</button>
+                <div id="wifi-networks" class="network-list"></div>
+            </div>
+        </div>
+
+        <div id="bluetooth-panel" class="panel">
+            <div class="panel-header">
+                <h2>Bluetooth Settings</h2>
+                <button class="close-btn" onclick="closePanel()">&times;</button>
+            </div>
+            <div class="panel-content">
+                <button class="scan-btn" onclick="scanBluetooth()">Scan Devices</button>
+                <div id="bluetooth-devices" class="device-list"></div>
+            </div>
+        </div>
+
+        <div id="search-panel" class="panel">
+            <div class="panel-header">
+                <h2>Search & Browse</h2>
+                <button class="close-btn" onclick="closePanel()">&times;</button>
+            </div>
+            <div class="panel-content">
+                <input type="text" id="search-input" placeholder="Search web or enter URL..." class="search-input">
+                <button onclick="performSearch()">Search</button>
+                <button onclick="navigateToUrl()">Go to URL</button>
+            </div>
+        </div>
+
+        <div id="power-panel" class="panel">
+            <div class="panel-header">
+                <h2>Power Options</h2>
+                <button class="close-btn" onclick="closePanel()">&times;</button>
+            </div>
+            <div class="panel-content">
+                <button class="power-btn shutdown" onclick="powerAction('shutdown')">Shutdown</button>
+                <button class="power-btn reboot" onclick="powerAction('reboot')">Reboot</button>
+                <div id="system-info" class="system-info"></div>
+            </div>
+        </div>
+
+        <div id="settings-panel" class="panel">
+            <div class="panel-header">
+                <h2>Settings</h2>
+                <button class="close-btn" onclick="closePanel()">&times;</button>
+            </div>
+            <div class="panel-content">
+                <div class="setting-item">
+                    <label>Virtual Keyboard</label>
+                    <input type="checkbox" id="virtual-keyboard-toggle" onchange="toggleVirtualKeyboard()">
+                </div>
+                <div class="setting-item">
+                    <label>Theme</label>
+                    <select id="theme-select" onchange="changeTheme()">
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Auto Connect WiFi</label>
+                    <input type="checkbox" id="auto-connect-toggle">
+                </div>
+            </div>
+        </div>
+
+        <!-- Virtual Keyboard -->
+        <div id="virtual-keyboard" class="virtual-keyboard">
+            <div class="keyboard-row">
+                <button class="key" onclick="typeKey('1')">1</button>
+                <button class="key" onclick="typeKey('2')">2</button>
+                <button class="key" onclick="typeKey('3')">3</button>
+                <button class="key" onclick="typeKey('4')">4</button>
+                <button class="key" onclick="typeKey('5')">5</button>
+                <button class="key" onclick="typeKey('6')">6</button>
+                <button class="key" onclick="typeKey('7')">7</button>
+                <button class="key" onclick="typeKey('8')">8</button>
+                <button class="key" onclick="typeKey('9')">9</button>
+                <button class="key" onclick="typeKey('0')">0</button>
+                <button class="key backspace" onclick="backspace()">⌫</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key" onclick="typeKey('q')">q</button>
+                <button class="key" onclick="typeKey('w')">w</button>
+                <button class="key" onclick="typeKey('e')">e</button>
+                <button class="key" onclick="typeKey('r')">r</button>
+                <button class="key" onclick="typeKey('t')">t</button>
+                <button class="key" onclick="typeKey('y')">y</button>
+                <button class="key" onclick="typeKey('u')">u</button>
+                <button class="key" onclick="typeKey('i')">i</button>
+                <button class="key" onclick="typeKey('o')">o</button>
+                <button class="key" onclick="typeKey('p')">p</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key" onclick="typeKey('a')">a</button>
+                <button class="key" onclick="typeKey('s')">s</button>
+                <button class="key" onclick="typeKey('d')">d</button>
+                <button class="key" onclick="typeKey('f')">f</button>
+                <button class="key" onclick="typeKey('g')">g</button>
+                <button class="key" onclick="typeKey('h')">h</button>
+                <button class="key" onclick="typeKey('j')">j</button>
+                <button class="key" onclick="typeKey('k')">k</button>
+                <button class="key" onclick="typeKey('l')">l</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key shift" onclick="toggleShift()">⇧</button>
+                <button class="key" onclick="typeKey('z')">z</button>
+                <button class="key" onclick="typeKey('x')">x</button>
+                <button class="key" onclick="typeKey('c')">c</button>
+                <button class="key" onclick="typeKey('v')">v</button>
+                <button class="key" onclick="typeKey('b')">b</button>
+                <button class="key" onclick="typeKey('n')">n</button>
+                <button class="key" onclick="typeKey('m')">m</button>
+                <button class="key" onclick="typeKey('.')">.</button>
+                <button class="key enter" onclick="typeKey('Enter')">↵</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key space" onclick="typeKey(' ')">Space</button>
+                <button class="key" onclick="hideKeyboard()">Hide</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
