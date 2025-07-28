@@ -49,16 +49,17 @@ sudo apt install -y \
   libgstreamer-plugins-bad1.0-dev
 
 echo ">>> Building WPE from latest stable releases..."
-cd /tmp
 
 # Clean up any previous build attempts
-rm -rf /tmp/libwpe-* /tmp/wpebackend-* /tmp/wpewebkit-* /tmp/cog-*
+sudo rm -rf /tmp/libwpe-* /tmp/wpebackend-* /tmp/wpewebkit-* /tmp/cog-*
+cd /tmp
 
 # Download and build libwpe v1.16.2
 echo "Building libwpe..."
-wget https://wpewebkit.org/releases/libwpe-1.16.2.tar.xz
+wget -O libwpe-1.16.2.tar.xz https://wpewebkit.org/releases/libwpe-1.16.2.tar.xz
 tar -xf libwpe-1.16.2.tar.xz
 cd libwpe-1.16.2
+rm -rf build
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release -GNinja ..
 ninja
@@ -67,9 +68,10 @@ cd /tmp
 
 # Download and build wpebackend-fdo v1.16.0
 echo "Building wpebackend-fdo..."
-wget https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
+wget -O wpebackend-fdo-1.16.0.tar.xz https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
 tar -xf wpebackend-fdo-1.16.0.tar.xz
 cd wpebackend-fdo-1.16.0
+rm -rf build
 meson setup build --buildtype=release
 ninja -C build
 sudo ninja -C build install
@@ -77,9 +79,10 @@ cd /tmp
 
 # Download and build wpewebkit v2.48.4
 echo "Building wpewebkit (this will take a while)..."
-wget https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
+wget -O wpewebkit-2.48.4.tar.xz https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
 tar -xf wpewebkit-2.48.4.tar.xz
 cd wpewebkit-2.48.4
+rm -rf build
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release \
       -DPORT=WPE \
@@ -95,9 +98,10 @@ cd /tmp
 
 # Download and build cog v0.18.5
 echo "Building cog..."
-wget https://wpewebkit.org/releases/cog-0.18.5.tar.xz
+wget -O cog-0.18.5.tar.xz https://wpewebkit.org/releases/cog-0.18.5.tar.xz
 tar -xf cog-0.18.5.tar.xz
 cd cog-0.18.5
+rm -rf build
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release \
       -DCOG_PLATFORM_DRM=ON \
