@@ -12,6 +12,7 @@ echo ">>> Installing build dependencies..."
 sudo apt install -y \
   build-essential \
   cmake \
+  meson \
   ninja-build \
   pkg-config \
   libglib2.0-dev \
@@ -62,10 +63,9 @@ echo "Building wpebackend-fdo..."
 wget https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
 tar -xf wpebackend-fdo-1.16.0.tar.xz
 cd wpebackend-fdo-1.16.0
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -GNinja ..
-ninja
-sudo ninja install
+meson setup build --buildtype=release
+ninja -C build
+sudo ninja -C build install
 cd /tmp
 
 # Download and build wpewebkit v2.48.4
@@ -111,6 +111,7 @@ echo ">>> Removing unnecessary build packages to save space..."
 sudo apt remove -y \
   build-essential \
   cmake \
+  meson \
   ninja-build \
   libglib2.0-dev \
   libgtk-3-dev \
