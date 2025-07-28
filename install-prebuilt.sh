@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
-# youtube-tv-kiosk-install.sh – Raspberry Pi OS Lite Bookworm 64-bit
+# youtube-tv-kiosk-install-prebuilt.sh – Fast installation using pre-built packages
 set -euo pipefail
 [[ $EUID -eq 0 ]] && { echo "Run as a regular user, not root."; exit 1; }
 
 CURRENT_USER=$(whoami)
-REPO_URL="https://raw.githubusercontent.com/bhNibir/youtubetv-os/main"
 
 echo ">>> Updating system..."
 sudo apt update && sudo apt full-upgrade -y
 
-echo ">>> Installing WPE WebKit and dependencies..."
+echo ">>> Installing WPE WebKit and dependencies from Raspberry Pi repository..."
 sudo apt install -y \
   libwpewebkit-2.0-1 \
   libwpewebkit-2.0-dev \
@@ -54,9 +53,6 @@ if [ ! -f "$CMDLINE_FILE" ]; then
 fi
 
 sudo sed -i '1s/$/ quiet loglevel=3 logo.nologo vt.global_cursor_default=0/' "$CMDLINE_FILE"
-
-# Optional: uncomment below if you want to boot to CLI by default
-# sudo systemctl set-default multi-user.target
 
 echo ">>> Creating kiosk script..."
 sudo tee /usr/local/bin/youtube-kiosk.sh >/dev/null <<'EOF'
@@ -127,6 +123,8 @@ EOF
 
 sudo systemctl daemon-reload
 
-echo ">>> Done! Rebooting..."
-sleep 3
+echo ">>> Installation completed successfully!"
+echo ">>> The system will reboot and start the YouTube TV kiosk automatically."
+echo ">>> Rebooting in 5 seconds..."
+sleep 5
 sudo reboot
