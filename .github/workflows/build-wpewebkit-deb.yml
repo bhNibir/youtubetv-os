@@ -1,4 +1,4 @@
-name: Build & Package WPEWebKit as .deb
+name: Build WPE WebKit from tarball
 
 on:
   push:
@@ -7,33 +7,33 @@ on:
 
 jobs:
   build:
-    name: Build & Package for ARM64
     runs-on: ubuntu-latest
+    name: Build WPEWebKit v2.48.4 from source tarball
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
+      - name: Set up build environment
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            ninja-build cmake build-essential git fakeroot \
+            ninja-build cmake build-essential wget \
+            fakeroot dpkg-dev devscripts \
             g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
-            qemu-user-static dpkg-dev dh-make devscripts \
-            libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-            libjpeg-dev libpng-dev libharfbuzz-dev libwebp-dev \
-            python3 python3-pip ruby unifdef
+            qemu-user-static \
+            libglib2.0-dev libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev \
+            libjpeg-dev libpng-dev libwebp-dev \
+            libharfbuzz-dev python3 ruby unifdef
 
-      - name: Clone WPEWebKit v2.48.4
+      - name: Download WPEWebKit v2.48.4 source
         run: |
-          git clone --branch wpewebkit-2.48.4 https://github.com/WebKit/WebKit.git
-          cd WebKit
-          mkdir build
+          wget https://github.com/WebKit/WebKit/archive/refs/tags/wpewebkit-2.48.4.tar.gz
+          tar -xf wpewebkit-2.48.4.tar.gz
+          mv WebKit-wpewebkit-2.48.4 wpewebkit
 
-      - name: Build WPEWebKit
+      - name: Configure and build WPE WebKit
         run: |
-          cd WebKit/build
+          mkdir -p wpewebkit/build
+          cd wpewebkit/build
           cmake .. \
             -DPORT=WPE \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -53,17 +53,17 @@ jobs:
           Section: web
           Priority: optional
           Architecture: arm64
-          Maintainer: Your Name <you@example.com>
-          Description: WPE WebKit browser engine for embedded devices (Raspberry Pi 3B+)
+          Maintainer: bhNibir <nibir@example.com>
+          Description: WPE WebKit 2.48.4 for Raspberry Pi 3B+
           EOF
 
           fakeroot dpkg-deb --build deb-root wpewebkit-aarch64-rpi3b-v2.48.4.deb
 
-      - name: Upload .deb to release
+      - name: Upload release .deb package
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v2.48.4
-          name: WPEWebKit 2.48.4 for RPi3B+
+          name: WPE WebKit 2.48.4 (Raspberry Pi 3B+)
           files: wpewebkit-aarch64-rpi3b-v2.48.4.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
