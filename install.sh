@@ -16,8 +16,7 @@ sudo apt install -y \
   gstreamer1.0-libav \
   gstreamer1.0-plugins-good \
   gstreamer1.0-plugins-bad \
-  gstreamer1.0-plugins-ugly \
-  gstreamer1.0-v4l2
+  gstreamer1.0-plugins-ugly
 
 echo ">>> Configuring /boot/config.txt..."
 if ! grep -q "^dtoverlay=vc4-kms-v3d" /boot/config.txt; then
