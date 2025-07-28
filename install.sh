@@ -61,19 +61,33 @@ echo ">>> Creating kiosk script..."
 sudo tee /usr/local/bin/youtube-kiosk.sh >/dev/null <<'EOF'
 #!/bin/bash
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
+LOGFILE="/var/log/youtube-kiosk.log"
+
+# Create the log file if it doesn't exist
+if [ ! -f "$LOGFILE" ]; then
+  sudo touch "$LOGFILE"
+  sudo chown $(id -u):$(id -g) "$LOGFILE"
+fi
+
+echo "[INFO] Kiosk script started at $(date)" >> "$LOGFILE"
 
 # Wait for network
 until ping -c 1 -W 2 google.com &>/dev/null; do
+  echo "[WARN] Waiting for network..." >> "$LOGFILE"
   sleep 2
 done
 
-# Give the display a moment to come up
+# Give time for display manager (if any)
 sleep 1
 
-exec /usr/bin/cog \
-  --platform=drm \
+# Launch cog in kiosk mode with mouse support
+/usr/bin/cog \
+  -P drm \
+  -O fullscreen=true \
   --enable-media \
-  --on-display-request=fullscreen \
+  --enable-fullscreen \
+   --enable-javascript \
+  --enable-spatial-navigation=true \
   --user-agent="Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/537.36" \
   https://www.youtube.com/tv
 EOF
