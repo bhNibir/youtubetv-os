@@ -80,7 +80,7 @@ EOF
 sudo chmod +x /usr/local/bin/youtube-kiosk.sh
 
 echo ">>> Creating systemd service..."
-sudo tee /etc/systemd/system/youtube-kiosk.service >/dev/null <<'EOF'
+cat <<EOF | sudo tee /etc/systemd/system/youtube-kiosk.service >/dev/null
 [Unit]
 Description=YouTube TV kiosk (WPE WebKit)
 After=network-online.target
@@ -89,7 +89,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=$CURRENT_USER
-Environment="XDG_RUNTIME_DIR=/run/user/%U"
+Environment="XDG_RUNTIME_DIR=/run/user/$(id -u $CURRENT_USER)"
 ExecStart=/usr/local/bin/youtube-kiosk.sh
 Restart=always
 RestartSec=3
