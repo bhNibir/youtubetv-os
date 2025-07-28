@@ -1,10 +1,10 @@
 # YouTube TV OS for Raspberry Pi 3B+
 
-Transform your Raspberry Pi 3B+ into a dedicated YouTube TV streaming device using DietPi! This project creates a kiosk-mode setup that boots directly into YouTube TV with Android TV user agent for the best experience.
+Transform your Raspberry Pi 3B+ into a dedicated YouTube TV streaming device using Raspberry Pi OS Lite! This project creates a lightweight kiosk-mode setup that boots directly into YouTube TV using WPE WebKit and Cog browser for optimal performance.
 
 ## 🚀 One-Command Installation
 
-Since DietPi's Wi-Fi is already configured before SSH login, installation is super simple:
+Run this command on your Raspberry Pi OS Lite system (as the 'pi' user):
 
 ### Option 1: Using curl
 ```bash
@@ -18,46 +18,48 @@ wget -qO- https://raw.githubusercontent.com/bhNibir/youtubetv-os/main/install.sh
 
 ## 📋 What This Script Does
 
-1. **System Update** - Updates all DietPi packages
+1. **System Update** - Updates all Raspberry Pi OS packages
 2. **Software Installation** - Installs:
-   - Chromium browser
-   - X11 display server
-   - Bluetooth support
-   - ALSA audio system
-   - NetworkManager
-   - Matchbox on-screen keyboard
-3. **Kiosk Configuration** - Sets up Chromium to:
-   - Launch in fullscreen kiosk mode
-   - Use Android TV user agent
-   - Hide mouse cursor
-   - Disable screen blanking
-   - Load YouTube TV automatically
-4. **Auto-login Setup** - Configures automatic root login
-5. **Bluetooth Enable** - Enables Bluetooth for remote controls
-6. **Auto-reboot** - Reboots into YouTube TV mode
+   - Cog browser (WPE WebKit-based)
+   - WPE WebKit libraries
+   - GStreamer multimedia framework
+   - Hardware acceleration support
+3. **Boot Configuration** - Optimizes `/boot/config.txt` for:
+   - KMS video driver (vc4-kms-v3d)
+   - GPU memory allocation (256MB)
+   - Disabled splash screen for faster boot
+4. **Kiosk Setup** - Creates systemd service that:
+   - Launches Cog browser in fullscreen
+   - Uses Smart TV user agent for YouTube TV
+   - Enables hardware-accelerated media playback
+   - Waits for network connectivity
+   - Auto-restarts on crashes
+5. **Auto-reboot** - Reboots into YouTube TV kiosk mode
 
 ## 🎯 Features
 
-- ✅ **No Wi-Fi Configuration Needed** - Uses DietPi's pre-configured network
-- ✅ **Android TV Experience** - Proper user agent for YouTube TV interface
-- ✅ **Bluetooth Support** - Connect wireless keyboards/remotes
-- ✅ **On-Screen Keyboard** - Touch-friendly input method
-- ✅ **Auto-Start** - Boots directly into YouTube TV
-- ✅ **Power Efficient** - Optimized for Raspberry Pi 3B+
+- ✅ **Lightweight & Fast** - WPE WebKit is optimized for embedded devices
+- ✅ **Hardware Acceleration** - Full GPU acceleration for smooth video playback
+- ✅ **Smart TV Experience** - Proper user agent for YouTube TV interface
+- ✅ **Auto-Start** - Boots directly into YouTube TV kiosk mode
+- ✅ **Network Resilient** - Waits for connectivity and auto-restarts
+- ✅ **Power Efficient** - Minimal resource usage, perfect for Pi 3B+
+- ✅ **No X11 Overhead** - Direct DRM rendering for better performance
 
 ## 🔧 Prerequisites
 
 - Raspberry Pi 3B+ with microSD card (16GB+ recommended)
-- DietPi OS installed and configured with Wi-Fi
-- SSH access to your Pi
+- Raspberry Pi OS Lite (Bookworm 64-bit) installed and configured
+- Wi-Fi or Ethernet connection configured
+- SSH access to your Pi (run as 'pi' user, not root)
 
 ## 📱 Usage
 
 After installation and reboot:
-1. Your Pi will automatically boot into YouTube TV
-2. Use a Bluetooth keyboard/remote for navigation
-3. Touch the screen to bring up the on-screen keyboard if needed
-4. Enjoy your dedicated YouTube TV streaming device!
+1. Your Pi will automatically boot into YouTube TV kiosk mode
+2. Use a USB keyboard/mouse or Bluetooth remote for navigation
+3. The system will automatically restart the browser if it crashes
+4. Enjoy smooth, hardware-accelerated YouTube TV streaming!
 
 ## 🛠️ Manual Installation
 
@@ -80,16 +82,24 @@ If you prefer to run the script manually:
 
 ## 🔄 Reverting Changes
 
-To return to normal DietPi desktop:
+To disable the YouTube TV kiosk and return to normal CLI:
 ```bash
-sudo dietpi-autostart 2  # LXDE Desktop
+sudo systemctl disable youtube-kiosk.service
+sudo systemctl stop youtube-kiosk.service
+sudo reboot
+```
+
+To re-enable:
+```bash
+sudo systemctl enable youtube-kiosk.service
 sudo reboot
 ```
 
 ## 📞 Support
 
 - **Issues**: Open an issue on this GitHub repository
-- **DietPi Documentation**: https://dietpi.com/docs/
+- **Raspberry Pi Documentation**: https://www.raspberrypi.org/documentation/
+- **WPE WebKit**: https://wpewebkit.org/
 - **YouTube TV**: https://tv.youtube.com/
 
 ## 📄 License

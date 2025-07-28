@@ -16,10 +16,12 @@ sudo apt install -y \
   gstreamer1.0-libav \
   gstreamer1.0-plugins-good \
   gstreamer1.0-plugins-bad \
-  gstreamer1.0-plugins-ugly
+  gstreamer1.0-plugins-ugly \
+  gstreamer1.0-v4l2
 
 echo ">>> Configuring /boot/config.txt..."
-sudo tee -a /boot/config.txt >/dev/null <<'EOF'
+if ! grep -q "^dtoverlay=vc4-kms-v3d" /boot/config.txt; then
+  sudo tee -a /boot/config.txt >/dev/null <<'EOF'
 
 # --- YouTube TV kiosk ---
 dtoverlay=vc4-kms-v3d
@@ -28,6 +30,7 @@ max_framebuffers=2
 disable_splash=1
 gpu_mem=256
 EOF
+fi
 
 echo ">>> Configuring cmdline.txt..."
 sudo sed -i '1s/$/ quiet loglevel=3 logo.nologo vt.global_cursor_default=0/' /boot/cmdline.txt
@@ -40,8 +43,13 @@ sudo tee /usr/local/bin/youtube-kiosk.sh >/dev/null <<'EOF'
 #!/bin/bash
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 
-# Wait for network connectivity
-until ping -c1 google.com &>/dev/null; do sleep 2; done
+# Wait for network
+until ping -c 1 -W 2 google.com &>/dev/null; do
+  sleep 2
+done
+
+# Give the display a moment to come up
+sleep 1
 
 exec /usr/bin/cog \
   --platform=drm \
@@ -62,7 +70,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=pi
-Environment="XDG_RUNTIME_DIR=/run/user/1000"
+Environment="XDG_RUNTIME_DIR=/run/user/%U"
 ExecStart=/usr/local/bin/youtube-kiosk.sh
 Restart=always
 RestartSec=3
