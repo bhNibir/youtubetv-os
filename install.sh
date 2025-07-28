@@ -19,6 +19,7 @@ sudo apt install -y \
   ruby-dev \
   python3 \
   perl \
+  libtasn1-6-dev \
   libglib2.0-dev \
   libgtk-3-dev \
   libsoup2.4-dev \
@@ -125,6 +126,7 @@ sudo apt remove -y \
   meson \
   ninja-build \
   ruby-dev \
+  libtasn1-6-dev \
   libglib2.0-dev \
   libgtk-3-dev \
   libsoup2.4-dev \
