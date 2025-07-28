@@ -1,60 +1,79 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# youtube-tv-kiosk-install.sh – Raspberry Pi OS Lite Bookworm 64-bit
+set -euo pipefail
+[[ $EUID -eq 0 ]] && { echo "Run as the 'pi' user, not root."; exit 1; }
 
-echo "📺 Setting up YouTube TV OS on DietPi for Raspberry Pi 3B+..."
+echo ">>> Updating system..."
+sudo apt update && sudo apt full-upgrade -y
 
-# Step 1: System update
-echo "🔄 Updating system packages..."
-apt update && apt upgrade -y
+echo ">>> Installing required packages..."
+sudo apt install -y \
+  cog \
+  libwpewebkit-1.1-0 \
+  libwpebackend-fdo-1.0-1 \
+  libwpe-1.0-1 \
+  gstreamer1.0-wpe \
+  gstreamer1.0-libav \
+  gstreamer1.0-plugins-good \
+  gstreamer1.0-plugins-bad \
+  gstreamer1.0-plugins-ugly
 
-# Step 2: Install required DietPi software
-echo "📦 Installing required software packages..."
-dietpi-software install 9   # Chromium
-dietpi-software install 16  # X11
-dietpi-software install 170 # Bluetooth
-dietpi-software install 193 # ALSA
-dietpi-software install 188 # NetworkManager
-dietpi-software install 141 # Matchbox-keyboard
+echo ">>> Configuring /boot/config.txt..."
+sudo tee -a /boot/config.txt >/dev/null <<'EOF'
 
-# Step 3: Set autostart to Chromium kiosk
-echo "⚙️ Configuring autostart..."
-sed -i 's/^AUTO_START_INDEX=.*/AUTO_START_INDEX=9/' /var/lib/dietpi/dietpi-autostart
-
-# Step 4: Create Chromium Kiosk launcher
-echo "🚀 Creating Chromium kiosk launcher..."
-AUTOSTART_SCRIPT="/DietPi/dietpi/.chromium-autostart.sh"
-cat <<EOF > $AUTOSTART_SCRIPT
-#!/bin/bash
-xset s off
-xset -dpms
-xset s noblank
-unclutter -idle 0.5 -root &  # Hide mouse
-matchbox-keyboard &         # On-screen keyboard
-chromium \\
-  --user-agent="Mozilla/5.0 (Linux; Android 9; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.81 Safari/537.36" \\
-  --noerrdialogs --kiosk https://www.youtube.com/tv \\
-  --disable-restore-session-state --no-first-run
+# --- YouTube TV kiosk ---
+dtoverlay=vc4-kms-v3d
+disable_overscan=1
+max_framebuffers=2
+disable_splash=1
+gpu_mem=256
 EOF
 
-chmod +x $AUTOSTART_SCRIPT
+echo ">>> Configuring cmdline.txt..."
+sudo sed -i '1s/$/ quiet loglevel=3 logo.nologo vt.global_cursor_default=0/' /boot/cmdline.txt
 
-# Step 5: Enable and start Bluetooth
-echo "📶 Configuring Bluetooth..."
-systemctl enable bluetooth
-systemctl start bluetooth
+# Optional: uncomment below if you want to boot to CLI by default
+# sudo systemctl set-default multi-user.target
 
-# Step 6: Autologin root on boot
-echo "🔐 Setting up autologin..."
-mkdir -p /etc/systemd/system/getty@tty1.service.d
-cat <<EOF > /etc/systemd/system/getty@tty1.service.d/autologin.conf
+echo ">>> Creating kiosk script..."
+sudo tee /usr/local/bin/youtube-kiosk.sh >/dev/null <<'EOF'
+#!/bin/bash
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+
+# Wait for network connectivity
+until ping -c1 google.com &>/dev/null; do sleep 2; done
+
+exec /usr/bin/cog \
+  --platform=drm \
+  --enable-media \
+  --on-display-request=fullscreen \
+  --user-agent="Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/537.36" \
+  https://www.youtube.com/tv
+EOF
+sudo chmod +x /usr/local/bin/youtube-kiosk.sh
+
+echo ">>> Creating systemd service..."
+sudo tee /etc/systemd/system/youtube-kiosk.service >/dev/null <<'EOF'
+[Unit]
+Description=YouTube TV kiosk (WPE WebKit)
+After=network-online.target
+Wants=network-online.target
+
 [Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
+Type=simple
+User=pi
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+ExecStart=/usr/local/bin/youtube-kiosk.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
-# Step 7: Ensure autostart is set
-echo "✅ Finalizing autostart configuration..."
-dietpi-autostart 9
+sudo systemctl daemon-reexec
+sudo systemctl enable youtube-kiosk.service
 
-echo "✅ Setup Complete! Rebooting into YouTube TV Kiosk Mode..."
+echo ">>> Done! Rebooting..."
 sleep 3
-reboot
+sudo reboot
