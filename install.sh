@@ -4,6 +4,7 @@ set -euo pipefail
 [[ $EUID -eq 0 ]] && { echo "Run as a regular user, not root."; exit 1; }
 
 CURRENT_USER=$(whoami)
+REPO_URL="https://raw.githubusercontent.com/bhNibir/youtubetv-os/main"
 
 echo ">>> Updating system..."
 sudo apt update && sudo apt full-upgrade -y
@@ -58,128 +59,32 @@ sudo apt install -y \
   libgstreamer-plugins-base1.0-dev \
   libgstreamer-plugins-bad1.0-dev
 
+echo ">>> Downloading build scripts..."
+cd /tmp
+wget -O build-libwpe.sh "$REPO_URL/build-libwpe.sh"
+wget -O build-wpebackend-fdo.sh "$REPO_URL/build-wpebackend-fdo.sh"
+wget -O build-wpewebkit.sh "$REPO_URL/build-wpewebkit.sh"
+wget -O build-cog.sh "$REPO_URL/build-cog.sh"
+wget -O cleanup-build.sh "$REPO_URL/cleanup-build.sh"
+
+chmod +x build-*.sh cleanup-build.sh
+
 echo ">>> Building WPE from latest stable releases..."
 
-# Clean up any previous build attempts
-sudo rm -rf /tmp/libwpe-* /tmp/wpebackend-* /tmp/wpewebkit-* /tmp/cog-*
-cd /tmp
+# Build libwpe
+./build-libwpe.sh
 
-# Download and build libwpe v1.16.2
-echo "Building libwpe..."
-wget -O libwpe-1.16.2.tar.xz https://wpewebkit.org/releases/libwpe-1.16.2.tar.xz
-tar -xf libwpe-1.16.2.tar.xz
-cd libwpe-1.16.2
-rm -rf build
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -GNinja ..
-ninja
-sudo ninja install
-cd /tmp
+# Build wpebackend-fdo
+./build-wpebackend-fdo.sh
 
-# Download and build wpebackend-fdo v1.16.0
-echo "Building wpebackend-fdo..."
-wget -O wpebackend-fdo-1.16.0.tar.xz https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
-tar -xf wpebackend-fdo-1.16.0.tar.xz
-cd wpebackend-fdo-1.16.0
-rm -rf build
-meson setup build --buildtype=release
-ninja -C build
-sudo ninja -C build install
-cd /tmp
+# Build wpewebkit (this will take 1-3 hours)
+./build-wpewebkit.sh
 
-# Download and build wpewebkit v2.48.4
-echo "Building wpewebkit (this will take a while)..."
-wget -O wpewebkit-2.48.4.tar.xz https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
-tar -xf wpewebkit-2.48.4.tar.xz
-cd wpewebkit-2.48.4
-rm -rf build
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release \
-      -DPORT=WPE \
-      -DENABLE_GAMEPAD=ON \
-      -DENABLE_VIDEO=ON \
-      -DENABLE_WEB_AUDIO=ON \
-      -DENABLE_MEDIA_STREAM=ON \
-      -DENABLE_ENCRYPTED_MEDIA=ON \
-      -DENABLE_INTROSPECTION=ON \
-      -DENABLE_SPEECH_SYNTHESIS=ON \
-      -ENABLE_WPE_PLATFORM=ON \
-      -ENABLE_WPE_PLATFORM_DRM=ON \
-      -ENABLE_WPE_PLATFORM_HEADLESS=ON \
-      -DENABLE_DOCUMENTATION=OFF \
-      -USE_GSTREAMER_WEBRTC \
-      -DUSE_JPEGXL=ON \
-      -DUSE_AVIF=ON \
-      -DUSE_LIBBACKTRACE=OFF \
-      -GNinja ..
-ninja
-sudo ninja install
-cd /tmp
+# Build cog
+./build-cog.sh
 
-# Download and build cog v0.18.5
-echo "Building cog..."
-wget -O cog-0.18.5.tar.xz https://wpewebkit.org/releases/cog-0.18.5.tar.xz
-tar -xf cog-0.18.5.tar.xz
-cd cog-0.18.5
-rm -rf build
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release \
-      -DCOG_PLATFORM_DRM=ON \
-      -DCOG_PLATFORM_X11=ON \
-      -DCOG_PLATFORM_WL=ON \
-      -GNinja ..
-ninja
-sudo ninja install
-
-# Update library cache
-sudo ldconfig
-
-echo ">>> Cleaning up build files..."
-cd /
-rm -rf /tmp/libwpe-* /tmp/wpebackend-* /tmp/wpewebkit-* /tmp/cog-*
-
-echo ">>> Removing unnecessary build packages to save space..."
-sudo apt remove -y \
-  build-essential \
-  cmake \
-  meson \
-  ninja-build \
-  ruby-dev \
-  unifdef \
-  libtasn1-6-dev \
-  libgirepository1.0-dev \
-  gobject-introspection \
-  flite1-dev \
-  libjxl-dev \
-  libglib2.0-dev \
-  libgtk-3-dev \
-  libsoup-3.0-dev \
-  libwebp-dev \
-  libxslt1-dev \
-  libsecret-1-dev \
-  libgcrypt20-dev \
-  libsystemd-dev \
-  libjpeg-dev \
-  libpng-dev \
-  libavcodec-dev \
-  libavformat-dev \
-  libavutil-dev \
-  libgl1-mesa-dev \
-  libegl1-mesa-dev \
-  libdrm-dev \
-  libgbm-dev \
-  libinput-dev \
-  libudev-dev \
-  libwayland-dev \
-  wayland-protocols \
-  libgstreamer1.0-dev \
-  libgstreamer-plugins-base1.0-dev \
-  libgstreamer-plugins-bad1.0-dev
-
-echo ">>> Cleaning up package cache and orphaned packages..."
-sudo apt autoremove -y
-sudo apt autoclean
-sudo apt clean
+# Clean up build files and packages
+./cleanup-build.sh
 
 echo ">>> Configuring boot config..."
 # Check for new location first, fallback to old location
