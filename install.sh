@@ -8,17 +8,104 @@ CURRENT_USER=$(whoami)
 echo ">>> Updating system..."
 sudo apt update && sudo apt full-upgrade -y
 
-echo ">>> Installing required packages..."
+echo ">>> Installing build dependencies..."
 sudo apt install -y \
-  cog \
-  libwpewebkit-1.1-0 \
-  libwpebackend-fdo-1.0-1 \
-  libwpe-1.0-1 \
-  gstreamer1.0-wpe \
+  build-essential \
+  cmake \
+  ninja-build \
+  pkg-config \
+  libglib2.0-dev \
+  libgtk-3-dev \
+  libsoup2.4-dev \
+  libwebp-dev \
+  libxslt1-dev \
+  libsecret-1-dev \
+  libgcrypt20-dev \
+  libsystemd-dev \
+  libjpeg-dev \
+  libpng-dev \
+  libavcodec-dev \
+  libavformat-dev \
+  libavutil-dev \
+  libgl1-mesa-dev \
+  libegl1-mesa-dev \
+  libdrm-dev \
+  libgbm-dev \
+  libinput-dev \
+  libudev-dev \
+  libwayland-dev \
+  wayland-protocols \
   gstreamer1.0-libav \
   gstreamer1.0-plugins-good \
   gstreamer1.0-plugins-bad \
-  gstreamer1.0-plugins-ugly
+  gstreamer1.0-plugins-ugly \
+  libgstreamer1.0-dev \
+  libgstreamer-plugins-base1.0-dev \
+  libgstreamer-plugins-bad1.0-dev
+
+echo ">>> Building WPE from latest stable releases..."
+cd /tmp
+
+# Download and build libwpe v1.16.2
+echo "Building libwpe..."
+wget https://wpewebkit.org/releases/libwpe-1.16.2.tar.xz
+tar -xf libwpe-1.16.2.tar.xz
+cd libwpe-1.16.2
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release -GNinja ..
+ninja
+sudo ninja install
+cd /tmp
+
+# Download and build wpebackend-fdo v1.16.0
+echo "Building wpebackend-fdo..."
+wget https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
+tar -xf wpebackend-fdo-1.16.0.tar.xz
+cd wpebackend-fdo-1.16.0
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release -GNinja ..
+ninja
+sudo ninja install
+cd /tmp
+
+# Download and build wpewebkit v2.48.4
+echo "Building wpewebkit (this will take a while)..."
+wget https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
+tar -xf wpewebkit-2.48.4.tar.xz
+cd wpewebkit-2.48.4
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release \
+      -DPORT=WPE \
+      -DENABLE_GAMEPAD=ON \
+      -DENABLE_VIDEO=ON \
+      -DENABLE_WEB_AUDIO=ON \
+      -DENABLE_MEDIA_STREAM=ON \
+      -DENABLE_ENCRYPTED_MEDIA=ON \
+      -GNinja ..
+ninja
+sudo ninja install
+cd /tmp
+
+# Download and build cog v0.18.5
+echo "Building cog..."
+wget https://wpewebkit.org/releases/cog-0.18.5.tar.xz
+tar -xf cog-0.18.5.tar.xz
+cd cog-0.18.5
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release \
+      -DCOG_PLATFORM_DRM=ON \
+      -DCOG_PLATFORM_X11=ON \
+      -DCOG_PLATFORM_WL=ON \
+      -GNinja ..
+ninja
+sudo ninja install
+
+# Update library cache
+sudo ldconfig
+
+echo ">>> Cleaning up build files..."
+cd /
+rm -rf /tmp/libwpe-* /tmp/wpebackend-* /tmp/wpewebkit-* /tmp/cog-*
 
 echo ">>> Configuring boot config..."
 # Check for new location first, fallback to old location
@@ -81,14 +168,15 @@ done
 sleep 1
 
 # Launch cog in kiosk mode with mouse support
-/usr/bin/cog \
+/usr/local/bin/cog \
   -P drm \
   -O fullscreen=true \
   --enable-media \
   --enable-fullscreen \
-   --enable-javascript \
+  --enable-javascript \
   --enable-spatial-navigation=true \
-  --user-agent="Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/537.36" \
+  --gamepad \
+  --user-agent="Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" \
   https://www.youtube.com/tv
 EOF
 sudo chmod +x /usr/local/bin/youtube-kiosk.sh
