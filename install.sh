@@ -15,6 +15,10 @@ sudo apt install -y \
   meson \
   ninja-build \
   pkg-config \
+  ruby \
+  ruby-dev \
+  python3 \
+  perl \
   libglib2.0-dev \
   libgtk-3-dev \
   libsoup2.4-dev \
@@ -113,6 +117,7 @@ sudo apt remove -y \
   cmake \
   meson \
   ninja-build \
+  ruby-dev \
   libglib2.0-dev \
   libgtk-3-dev \
   libsoup2.4-dev \
