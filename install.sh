@@ -26,6 +26,9 @@ sudo apt install -y \
   flite1-dev \
   libjxl-dev \
   libwoff-dev \
+  libavif-dev \
+  libseccomp-dev \
+  gperf \
   libglib2.0-dev \
   libgtk-3-dev \
   libsoup-3.0-dev \
@@ -98,8 +101,16 @@ cmake -DCMAKE_BUILD_TYPE=Release \
       -DENABLE_WEB_AUDIO=ON \
       -DENABLE_MEDIA_STREAM=ON \
       -DENABLE_ENCRYPTED_MEDIA=ON \
+      -DENABLE_INTROSPECTION=ON \
       -DENABLE_SPEECH_SYNTHESIS=ON \
+      -ENABLE_WPE_PLATFORM=ON \
+      -ENABLE_WPE_PLATFORM_DRM=ON \
+      -ENABLE_WPE_PLATFORM_HEADLESS=ON \
+      -DENABLE_DOCUMENTATION=OFF \
+      -USE_GSTREAMER_WEBRTC \
       -DUSE_JPEGXL=ON \
+      -DUSE_AVIF=ON \
+      -DUSE_LIBBACKTRACE=OFF \
       -GNinja ..
 ninja
 sudo ninja install
