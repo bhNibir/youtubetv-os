@@ -51,6 +51,9 @@ sudo apt install -y \
 echo ">>> Building WPE from latest stable releases..."
 cd /tmp
 
+# Clean up any previous build attempts
+rm -rf /tmp/libwpe-* /tmp/wpebackend-* /tmp/wpewebkit-* /tmp/cog-*
+
 # Download and build libwpe v1.16.2
 echo "Building libwpe..."
 wget https://wpewebkit.org/releases/libwpe-1.16.2.tar.xz
