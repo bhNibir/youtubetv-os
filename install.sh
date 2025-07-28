@@ -107,6 +107,41 @@ echo ">>> Cleaning up build files..."
 cd /
 rm -rf /tmp/libwpe-* /tmp/wpebackend-* /tmp/wpewebkit-* /tmp/cog-*
 
+echo ">>> Removing unnecessary build packages to save space..."
+sudo apt remove -y \
+  build-essential \
+  cmake \
+  ninja-build \
+  libglib2.0-dev \
+  libgtk-3-dev \
+  libsoup2.4-dev \
+  libwebp-dev \
+  libxslt1-dev \
+  libsecret-1-dev \
+  libgcrypt20-dev \
+  libsystemd-dev \
+  libjpeg-dev \
+  libpng-dev \
+  libavcodec-dev \
+  libavformat-dev \
+  libavutil-dev \
+  libgl1-mesa-dev \
+  libegl1-mesa-dev \
+  libdrm-dev \
+  libgbm-dev \
+  libinput-dev \
+  libudev-dev \
+  libwayland-dev \
+  wayland-protocols \
+  libgstreamer1.0-dev \
+  libgstreamer-plugins-base1.0-dev \
+  libgstreamer-plugins-bad1.0-dev
+
+echo ">>> Cleaning up package cache and orphaned packages..."
+sudo apt autoremove -y
+sudo apt autoclean
+sudo apt clean
+
 echo ">>> Configuring boot config..."
 # Check for new location first, fallback to old location
 CONFIG_FILE="/boot/firmware/config.txt"
