@@ -19,10 +19,16 @@ sudo apt install -y \
   ruby-dev \
   python3 \
   perl \
+  unifdef \
   libtasn1-6-dev \
+  libgirepository1.0-dev \
+  gobject-introspection \
+  flite1-dev \
+  libjxl-dev \
+  libwoff-dev \
   libglib2.0-dev \
   libgtk-3-dev \
-  libsoup2.4-dev \
+  libsoup-3.0-dev \
   libwebp-dev \
   libxslt1-dev \
   libsecret-1-dev \
@@ -92,6 +98,8 @@ cmake -DCMAKE_BUILD_TYPE=Release \
       -DENABLE_WEB_AUDIO=ON \
       -DENABLE_MEDIA_STREAM=ON \
       -DENABLE_ENCRYPTED_MEDIA=ON \
+      -DENABLE_SPEECH_SYNTHESIS=ON \
+      -DUSE_JPEGXL=ON \
       -GNinja ..
 ninja
 sudo ninja install
@@ -126,10 +134,15 @@ sudo apt remove -y \
   meson \
   ninja-build \
   ruby-dev \
+  unifdef \
   libtasn1-6-dev \
+  libgirepository1.0-dev \
+  gobject-introspection \
+  flite1-dev \
+  libjxl-dev \
   libglib2.0-dev \
   libgtk-3-dev \
-  libsoup2.4-dev \
+  libsoup-3.0-dev \
   libwebp-dev \
   libxslt1-dev \
   libsecret-1-dev \
