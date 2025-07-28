@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # youtube-tv-kiosk-install.sh – Raspberry Pi OS Lite Bookworm 64-bit
 set -euo pipefail
-[[ $EUID -eq 0 ]] && { echo "Run as the 'pi' user, not root."; exit 1; }
+[[ $EUID -eq 0 ]] && { echo "Run as a regular user, not root."; exit 1; }
+
+CURRENT_USER=$(whoami)
 
 echo ">>> Updating system..."
 sudo apt update && sudo apt full-upgrade -y
@@ -28,6 +30,12 @@ disable_overscan=1
 max_framebuffers=2
 disable_splash=1
 gpu_mem=256
+
+# Power optimization to reduce undervoltage issues
+arm_freq=1200
+over_voltage=2
+temp_limit=75
+force_turbo=0
 EOF
 fi
 
@@ -68,7 +76,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=pi
+User=$CURRENT_USER
 Environment="XDG_RUNTIME_DIR=/run/user/%U"
 ExecStart=/usr/local/bin/youtube-kiosk.sh
 Restart=always
@@ -80,6 +88,16 @@ EOF
 
 sudo systemctl daemon-reexec
 sudo systemctl enable youtube-kiosk.service
+
+echo ">>> Configuring auto-login for user: $CURRENT_USER..."
+sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
+sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf >/dev/null <<EOF
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin $CURRENT_USER --noclear %I \$TERM
+EOF
+
+sudo systemctl daemon-reload
 
 echo ">>> Done! Rebooting..."
 sleep 3
