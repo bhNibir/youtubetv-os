@@ -20,9 +20,15 @@ sudo apt install -y \
   gstreamer1.0-plugins-bad \
   gstreamer1.0-plugins-ugly
 
-echo ">>> Configuring /boot/config.txt..."
-if ! grep -q "^dtoverlay=vc4-kms-v3d" /boot/config.txt; then
-  sudo tee -a /boot/config.txt >/dev/null <<'EOF'
+echo ">>> Configuring boot config..."
+# Check for new location first, fallback to old location
+CONFIG_FILE="/boot/firmware/config.txt"
+if [ ! -f "$CONFIG_FILE" ]; then
+  CONFIG_FILE="/boot/config.txt"
+fi
+
+if ! grep -q "^dtoverlay=vc4-kms-v3d" "$CONFIG_FILE"; then
+  sudo tee -a "$CONFIG_FILE" >/dev/null <<'EOF'
 
 # --- YouTube TV kiosk ---
 dtoverlay=vc4-kms-v3d
@@ -40,7 +46,13 @@ EOF
 fi
 
 echo ">>> Configuring cmdline.txt..."
-sudo sed -i '1s/$/ quiet loglevel=3 logo.nologo vt.global_cursor_default=0/' /boot/cmdline.txt
+# Check for new location first, fallback to old location
+CMDLINE_FILE="/boot/firmware/cmdline.txt"
+if [ ! -f "$CMDLINE_FILE" ]; then
+  CMDLINE_FILE="/boot/cmdline.txt"
+fi
+
+sudo sed -i '1s/$/ quiet loglevel=3 logo.nologo vt.global_cursor_default=0/' "$CMDLINE_FILE"
 
 # Optional: uncomment below if you want to boot to CLI by default
 # sudo systemctl set-default multi-user.target
