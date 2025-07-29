@@ -310,7 +310,7 @@ jobs:
             echo "ERROR: libwpe library was not built successfully"
             exit 1
           fi
-          if [ ! -f "/usr/lib/aarch64-linux-gnu/libWPEBackend-fdo-1.0.so" ]; then
+          if [ ! -f "/usr/lib/libWPEBackend-fdo-1.0.so" ]; then
             echo "ERROR: wpebackend-fdo library was not built successfully"
             exit 1
           fi
@@ -360,7 +360,7 @@ jobs:
           fi
           
           # Check if wpebackend-fdo files exist
-          if [ ! -f "/usr/lib/aarch64-linux-gnu/libWPEBackend-fdo-1.0.so" ]; then
+          if [ ! -f "/usr/lib/libWPEBackend-fdo-1.0.so" ]; then
             echo "ERROR: wpebackend-fdo files not found. Please ensure wpebackend-fdo was built successfully."
             exit 1
           fi
@@ -378,7 +378,7 @@ jobs:
           Maintainer: bhNibir <nibir@example.com>
           Description: WPE Backend for FreeDesktop.org for Raspberry Pi 3B+
           EOF
-          sudo cp -r /usr/lib/aarch64-linux-gnu/libWPEBackend* wpebackend-deb-root/usr/lib/aarch64-linux-gnu/
+          sudo cp -r /usr/lib/libWPEBackend* wpebackend-deb-root/usr/lib/aarch64-linux-gnu/
           sudo cp -r /usr/include/wpe-fdo-1.0 wpebackend-deb-root/usr/include/
           sudo cp -r /usr/lib/pkgconfig/wpebackend-fdo-1.0.pc wpebackend-deb-root/usr/lib/pkgconfig/
           fakeroot dpkg-deb --build wpebackend-deb-root wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
