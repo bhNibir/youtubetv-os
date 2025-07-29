@@ -22,7 +22,8 @@ jobs:
             libglib2.0-dev libgstreamer1.0-dev \
             libgstreamer-plugins-base1.0-dev \
             libjpeg-dev libpng-dev libwebp-dev \
-            libharfbuzz-dev python3 ruby unifdef
+            libharfbuzz-dev libicu-dev \
+            python3 ruby unifdef
 
       - name: Download WPEWebKit v2.48.4 source
         run: |
