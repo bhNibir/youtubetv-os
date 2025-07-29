@@ -154,9 +154,7 @@ jobs:
           # Install GObject Introspection development packages
           sudo apt-get install -y \
             gobject-introspection \
-            libgirepository1.0-dev \
-            g-ir-scanner \
-            g-ir-compiler
+            libgirepository1.0-dev
 
           # Install ARM64 development libraries
           sudo apt-get install -y \
