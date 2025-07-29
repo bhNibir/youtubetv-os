@@ -144,8 +144,19 @@ jobs:
             python3 ruby unifdef fakeroot meson bubblewrap xdg-dbus-proxy gperf ccache
 
           # Install Python dependencies to fix distutils issue
-          sudo apt-get install -y python3-setuptools python3-distutils
+          sudo apt-get install -y python3-setuptools python3-pip
           pip3 install --upgrade pip setuptools wheel
+          
+          # Install additional Python packages for GObject Introspection
+          sudo apt-get install -y python3-gi python3-gi-cairo
+          pip3 install pygobject
+          
+          # Install GObject Introspection development packages
+          sudo apt-get install -y \
+            gobject-introspection \
+            libgirepository1.0-dev \
+            g-ir-scanner \
+            g-ir-compiler
 
           # Install ARM64 development libraries
           sudo apt-get install -y \
@@ -191,6 +202,16 @@ jobs:
           # Fix Python distutils issue for g-ir-scanner
           export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
           export GI_SCANNER_DEBUG=1
+          
+          # Set up Python environment for modern Python versions
+          export PYTHONUNBUFFERED=1
+          export PYTHONDONTWRITEBYTECODE=1
+          
+          # Additional GObject Introspection environment variables
+          export GI_SCANNER_EXTRA_ARGS="--no-libtool"
+          export GI_SCANNER_QUIET=1
+          export GI_SCANNER_WARN_ALL=1
+          export GI_SCANNER_WARN_ERROR=1
 
           # Clean up temporary apt configuration
           sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
@@ -434,7 +455,6 @@ jobs:
             -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
             -DBWRAP_EXECUTABLE=/usr/bin/bwrap \
             -DDBUS_PROXY_EXECUTABLE=/usr/bin/xdg-dbus-proxy \
-            -DENABLE_INTROSPECTION=OFF \
             -GNinja
           
           # Build with parallel jobs and memory optimization
