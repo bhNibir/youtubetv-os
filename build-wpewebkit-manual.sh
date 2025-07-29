@@ -313,8 +313,10 @@ build_libwpe() {
     tar -xf libwpe-1.16.2.tar.xz
     cd libwpe-1.16.2
     
-    # Configure and build
+    # Create build directory
     mkdir build && cd build
+    
+    # Configure with CMake
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr \
@@ -324,16 +326,23 @@ build_libwpe() {
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -GNinja
     
+    # Build
     ninja
+    
+    # Install
     sudo ninja install
-    cd ../..
     
     # Create .deb package
+    print_status "Creating libwpe .deb package..."
+    cd ../..
+    
+    # Create package structure
     mkdir -p libwpe-deb-root/DEBIAN
     mkdir -p libwpe-deb-root/usr/lib/aarch64-linux-gnu
     mkdir -p libwpe-deb-root/usr/include
     mkdir -p libwpe-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig
     
+    # Create control file
     cat <<EOF > libwpe-deb-root/DEBIAN/control
 Package: libwpe-1.0
 Version: 1.16.2
@@ -344,15 +353,22 @@ Maintainer: bhNibir <nibir@example.com>
 Description: WPE (WebKit Port for Embedded) library for Raspberry Pi 3B+
 EOF
     
+    # Copy files
     sudo cp -r /usr/lib/aarch64-linux-gnu/libwpe* libwpe-deb-root/usr/lib/aarch64-linux-gnu/
     sudo cp -r /usr/include/wpe-1.0 libwpe-deb-root/usr/include/
     sudo cp -r /usr/lib/aarch64-linux-gnu/pkgconfig/wpe* libwpe-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig/
     
+    # Fix permissions for dpkg-deb
+    sudo chmod 755 libwpe-deb-root/DEBIAN
+    sudo chmod 644 libwpe-deb-root/DEBIAN/control
+    sudo chown -R root:root libwpe-deb-root
+    
+    # Create .deb package
     fakeroot dpkg-deb --build libwpe-deb-root libwpe-aarch64-rpi3b-v1.16.2.deb
     
-    # Cleanup
+    # Clean up
+    sudo rm -rf libwpe-deb-root
     rm -rf libwpe-1.16.2
-    rm -rf libwpe-deb-root
     
     print_success "libwpe built and packaged successfully"
 }
@@ -361,15 +377,13 @@ EOF
 build_wpebackend_fdo() {
     print_status "Building wpebackend-fdo..."
     
-    if [ -f "wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb" ]; then
-        print_warning "wpebackend-fdo .deb already exists, skipping build..."
-        return 0
-    fi
-    
     # Download and extract wpebackend-fdo
     wget -q https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
     tar -xf wpebackend-fdo-1.16.0.tar.xz
     cd wpebackend-fdo-1.16.0
+    
+    # Create build directory
+    mkdir build && cd build
     
     # Create cross-compilation configuration for Meson
     cat > cross-file.txt << 'EOF'
@@ -393,23 +407,29 @@ cpu = 'aarch64'
 endian = 'little'
 EOF
     
-    # Configure and build
-    mkdir build && cd build
+    # Configure with Meson
     meson setup .. \
         --buildtype=release \
         --prefix=/usr \
-        --cross-file=../cross-file.txt
+        --cross-file=cross-file.txt
     
+    # Build
     ninja
+    
+    # Install
     sudo ninja install
-    cd ../..
     
     # Create .deb package
+    print_status "Creating wpebackend-fdo .deb package..."
+    cd ../..
+    
+    # Create package structure
     mkdir -p wpebackend-deb-root/DEBIAN
     mkdir -p wpebackend-deb-root/usr/lib/aarch64-linux-gnu
     mkdir -p wpebackend-deb-root/usr/include
     mkdir -p wpebackend-deb-root/usr/lib/pkgconfig
     
+    # Create control file
     cat <<EOF > wpebackend-deb-root/DEBIAN/control
 Package: wpebackend-fdo
 Version: 1.16.0
@@ -420,15 +440,22 @@ Maintainer: bhNibir <nibir@example.com>
 Description: WPE Backend for FreeDesktop.org for Raspberry Pi 3B+
 EOF
     
+    # Copy files
     sudo cp -r /usr/lib/libWPEBackend* wpebackend-deb-root/usr/lib/aarch64-linux-gnu/
     sudo cp -r /usr/include/wpe-fdo-1.0 wpebackend-deb-root/usr/include/
     sudo cp -r /usr/lib/pkgconfig/wpebackend-fdo-1.0.pc wpebackend-deb-root/usr/lib/pkgconfig/
     
+    # Fix permissions for dpkg-deb
+    sudo chmod 755 wpebackend-deb-root/DEBIAN
+    sudo chmod 644 wpebackend-deb-root/DEBIAN/control
+    sudo chown -R root:root wpebackend-deb-root
+    
+    # Create .deb package
     fakeroot dpkg-deb --build wpebackend-deb-root wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
     
-    # Cleanup
+    # Clean up
+    sudo rm -rf wpebackend-deb-root
     rm -rf wpebackend-fdo-1.16.0
-    rm -rf wpebackend-deb-root
     
     print_success "wpebackend-fdo built and packaged successfully"
 }
@@ -437,28 +464,14 @@ EOF
 build_wpewebkit() {
     print_status "Building WPE WebKit..."
     
-    if [ -f "wpewebkit-aarch64-rpi3b-v2.48.4.deb" ]; then
-        print_warning "WPE WebKit .deb already exists, skipping build..."
-        return 0
-    fi
-    
     # Download and extract WPE WebKit
     wget -q https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
     tar -xf wpewebkit-2.48.4.tar.xz
     mv wpewebkit-2.48.4 wpewebkit
     
-    # Configure and build
+    # Create build directory
     mkdir -p wpewebkit/build
     cd wpewebkit/build
-    
-    # Set up environment variables
-    export CC=ccache
-    export CXX=ccache
-    export AR=aarch64-linux-gnu-ar
-    export STRIP=aarch64-linux-gnu-strip
-    export RANLIB=aarch64-linux-gnu-ranlib
-    export LD=aarch64-linux-gnu-ld
-    export PKG_CONFIG=aarch64-linux-gnu-pkg-config
     
     # Configure with CMake
     cmake .. \
@@ -483,18 +496,24 @@ build_wpewebkit() {
         -DDBUS_PROXY_EXECUTABLE=/usr/bin/xdg-dbus-proxy \
         -GNinja
     
-    # Build
-    ninja -j$(nproc) -l$(nproc)
-    DESTDIR=../../deb-root ninja install
-    cd ../..
+    # Build with parallel jobs and memory optimization
+    ninja -j$(($(nproc) / 2)) -l$(($(nproc) / 2))
+    
+    # Install
+    DESTDIR=$PWD/../deb-root ninja install
     
     # Create .deb package
+    print_status "Creating WPE WebKit .deb package..."
+    cd ../..
+    
+    # Create package structure
     mkdir -p deb-root/DEBIAN
     mkdir -p deb-root/usr/lib/aarch64-linux-gnu
     mkdir -p deb-root/usr/include
     mkdir -p deb-root/usr/bin
     mkdir -p deb-root/usr/share
     
+    # Create control file
     cat <<EOF > deb-root/DEBIAN/control
 Package: wpewebkit
 Version: 2.48.4
@@ -505,17 +524,23 @@ Maintainer: bhNibir <nibir@example.com>
 Description: WPE WebKit 2.48.4 built for Raspberry Pi 3B+
 EOF
     
-    # Copy files
-    sudo cp -r deb-root/usr/lib/* deb-root/usr/lib/
-    sudo cp -r deb-root/usr/include/* deb-root/usr/include/
-    sudo cp -r deb-root/usr/bin/* deb-root/usr/bin/
-    sudo cp -r deb-root/usr/share/* deb-root/usr/share/
+    # Copy files from the install directory
+    sudo cp -r wpewebkit/deb-root/usr/lib/* deb-root/usr/lib/
+    sudo cp -r wpewebkit/deb-root/usr/include/* deb-root/usr/include/
+    sudo cp -r wpewebkit/deb-root/usr/bin/* deb-root/usr/bin/ 2>/dev/null || true
+    sudo cp -r wpewebkit/deb-root/usr/share/* deb-root/usr/share/ 2>/dev/null || true
     
+    # Fix permissions for dpkg-deb
+    sudo chmod 755 deb-root/DEBIAN
+    sudo chmod 644 deb-root/DEBIAN/control
+    sudo chown -R root:root deb-root
+    
+    # Create .deb package
     fakeroot dpkg-deb --build deb-root wpewebkit-aarch64-rpi3b-v2.48.4.deb
     
-    # Cleanup
+    # Clean up
+    sudo rm -rf deb-root
     rm -rf wpewebkit
-    rm -rf deb-root
     
     print_success "WPE WebKit built and packaged successfully"
 }
