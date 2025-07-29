@@ -1,552 +1,552 @@
-name: Build WPE WebKit from tarball
+# name: Build WPE WebKit from tarball
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    name: Build WPE WebKit 2.48.4 (arm64)
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     name: Build WPE WebKit 2.48.4 (arm64)
     
-    # Add permissions for creating releases
-    permissions:
-      contents: write
-      packages: write
-      id-token: write
+#     # Add permissions for creating releases
+#     permissions:
+#       contents: write
+#       packages: write
+#       id-token: write
 
-    steps:
-      # ------------------------------------------------------------------
-      # 0. Checkout and setup cache
-      # ------------------------------------------------------------------
-      - name: Checkout code
-        uses: actions/checkout@v4
+#     steps:
+#       # ------------------------------------------------------------------
+#       # 0. Checkout and setup cache
+#       # ------------------------------------------------------------------
+#       - name: Checkout code
+#         uses: actions/checkout@v4
 
-      - name: Setup cache for build artifacts
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/ccache
-            build-cache/
-            .ccache/
-          key: ${{ runner.os }}-build-cache-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-build-cache-
+#       - name: Setup cache for build artifacts
+#         uses: actions/cache@v4
+#         with:
+#           path: |
+#             ~/.cache/ccache
+#             build-cache/
+#             .ccache/
+#           key: ${{ runner.os }}-build-cache-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
+#           restore-keys: |
+#             ${{ runner.os }}-build-cache-
 
-      - name: Setup cache for dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            /usr/lib/aarch64-linux-gnu/libwpe*
-            /usr/include/wpe-1.0
-            /usr/lib/aarch64-linux-gnu/libWPEBackend*
-            /usr/include/wpe-fdo-1.0
-            /usr/lib/pkgconfig/wpe*
-            /usr/lib/pkgconfig/wpebackend*
-          key: ${{ runner.os }}-wpe-deps-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-wpe-deps-
+#       - name: Setup cache for dependencies
+#         uses: actions/cache@v4
+#         with:
+#           path: |
+#             /usr/lib/aarch64-linux-gnu/libwpe*
+#             /usr/include/wpe-1.0
+#             /usr/lib/aarch64-linux-gnu/libWPEBackend*
+#             /usr/include/wpe-fdo-1.0
+#             /usr/lib/pkgconfig/wpe*
+#             /usr/lib/pkgconfig/wpebackend*
+#           key: ${{ runner.os }}-wpe-deps-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
+#           restore-keys: |
+#             ${{ runner.os }}-wpe-deps-
 
-      - name: Setup cache for .deb packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            *.deb
-            deb-packages/
-          key: ${{ runner.os }}-deb-packages-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-deb-packages-
-      # ------------------------------------------------------------------
-      # 1. Prepare the build machine
-      # ------------------------------------------------------------------
-      - name: Set up build environment
-        run: |
-          # Add arm64 architecture
-          sudo dpkg --add-architecture arm64
+#       - name: Setup cache for .deb packages
+#         uses: actions/cache@v4
+#         with:
+#           path: |
+#             *.deb
+#             deb-packages/
+#           key: ${{ runner.os }}-deb-packages-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
+#           restore-keys: |
+#             ${{ runner.os }}-deb-packages-
+#       # ------------------------------------------------------------------
+#       # 1. Prepare the build machine
+#       # ------------------------------------------------------------------
+#       - name: Set up build environment
+#         run: |
+#           # Add arm64 architecture
+#           sudo dpkg --add-architecture arm64
           
-          # Completely reset apt configuration to bypass mirror system
-          sudo rm -rf /etc/apt/sources.list.d/
-          sudo mkdir -p /etc/apt/sources.list.d/
-          sudo rm -f /etc/apt/sources.list
-          sudo rm -f /etc/apt/apt-mirrors.txt
-          sudo rm -f /etc/apt/apt.conf.d/*mirror*
-          sudo rm -f /etc/apt/apt.conf.d/*Mirror*
+#           # Completely reset apt configuration to bypass mirror system
+#           sudo rm -rf /etc/apt/sources.list.d/
+#           sudo mkdir -p /etc/apt/sources.list.d/
+#           sudo rm -f /etc/apt/sources.list
+#           sudo rm -f /etc/apt/apt-mirrors.txt
+#           sudo rm -f /etc/apt/apt.conf.d/*mirror*
+#           sudo rm -f /etc/apt/apt.conf.d/*Mirror*
           
-          # Clear all apt caches and lists
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/*
+#           # Clear all apt caches and lists
+#           sudo apt-get clean
+#           sudo rm -rf /var/lib/apt/lists/*
           
-          # Get Ubuntu version
-          UBUNTU_VERSION=$(lsb_release -cs)
-          echo "Ubuntu version: $UBUNTU_VERSION"
+#           # Get Ubuntu version
+#           UBUNTU_VERSION=$(lsb_release -cs)
+#           echo "Ubuntu version: $UBUNTU_VERSION"
           
-          # Create AMD64 sources.list using echo
-          echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list
-          echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+#           # Create AMD64 sources.list using echo
+#           echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list
+#           echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+#           echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+#           echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
           
-          # Create ARM64 sources file using echo
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+#           # Create ARM64 sources file using echo
+#           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
+#           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+#           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+#           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
           
-          # Force apt to use direct sources without mirrors
-          echo 'Acquire::http::Pipeline-Depth "0";' | sudo tee /etc/apt/apt.conf.d/99-direct-sources
-          echo 'Acquire::http::No-Cache=True;' | sudo tee -a /etc/apt/apt.conf.d/99-direct-sources
-          echo 'APT::Get::AllowUnauthenticated "false";' | sudo tee -a /etc/apt/apt.conf.d/99-direct-sources
+#           # Force apt to use direct sources without mirrors
+#           echo 'Acquire::http::Pipeline-Depth "0";' | sudo tee /etc/apt/apt.conf.d/99-direct-sources
+#           echo 'Acquire::http::No-Cache=True;' | sudo tee -a /etc/apt/apt.conf.d/99-direct-sources
+#           echo 'APT::Get::AllowUnauthenticated "false";' | sudo tee -a /etc/apt/apt.conf.d/99-direct-sources
           
-          # Update package lists
-          sudo apt-get update -qq
+#           # Update package lists
+#           sudo apt-get update -qq
 
-          # Fallback: If update fails, try with different approach
-          if [ $? -ne 0 ]; then
-            echo "First apt update failed, trying alternative approach..."
-            # Remove all apt configuration and start fresh
-            sudo rm -f /etc/apt/sources.list
-            sudo rm -f /etc/apt/sources.list.d/*
-            sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
-            sudo mkdir -p /etc/apt/sources.list.d/
+#           # Fallback: If update fails, try with different approach
+#           if [ $? -ne 0 ]; then
+#             echo "First apt update failed, trying alternative approach..."
+#             # Remove all apt configuration and start fresh
+#             sudo rm -f /etc/apt/sources.list
+#             sudo rm -f /etc/apt/sources.list.d/*
+#             sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
+#             sudo mkdir -p /etc/apt/sources.list.d/
             
-            # Use minimal sources with echo
-            echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main" | sudo tee /etc/apt/sources.list
-            echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main" | sudo tee -a /etc/apt/sources.list
+#             # Use minimal sources with echo
+#             echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main" | sudo tee /etc/apt/sources.list
+#             echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main" | sudo tee -a /etc/apt/sources.list
             
-            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main" | sudo tee /etc/apt/sources.list.d/arm64.list
-            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+#             echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main" | sudo tee /etc/apt/sources.list.d/arm64.list
+#             echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main" | sudo tee -a /etc/apt/sources.list.d/arm64.list
             
-            sudo apt-get clean
-            sudo rm -rf /var/lib/apt/lists/*
-            sudo apt-get update -qq
-          fi
+#             sudo apt-get clean
+#             sudo rm -rf /var/lib/apt/lists/*
+#             sudo apt-get update -qq
+#           fi
           
-          # Third fallback: If still failing, try with environment variables
-          if [ $? -ne 0 ]; then
-            echo "Second approach also failed, trying with environment variables..."
-            # Set environment variables to bypass mirror system
-            export APT_CONFIG=/dev/null
-            export APT_CONFIG_FILE=/dev/null
+#           # Third fallback: If still failing, try with environment variables
+#           if [ $? -ne 0 ]; then
+#             echo "Second approach also failed, trying with environment variables..."
+#             # Set environment variables to bypass mirror system
+#             export APT_CONFIG=/dev/null
+#             export APT_CONFIG_FILE=/dev/null
             
-            sudo rm -f /etc/apt/sources.list
-            sudo rm -f /etc/apt/sources.list.d/*
-            echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list
-            echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+#             sudo rm -f /etc/apt/sources.list
+#             sudo rm -f /etc/apt/sources.list.d/*
+#             echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list
+#             echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
             
-            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
-            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+#             echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
+#             echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
             
-            sudo apt-get clean
-            sudo rm -rf /var/lib/apt/lists/*
-            sudo apt-get update -qq
-          fi
+#             sudo apt-get clean
+#             sudo rm -rf /var/lib/apt/lists/*
+#             sudo apt-get update -qq
+#           fi
 
-          # Install cross-compilation tool-chain + host tools
-          sudo apt-get install -y \
-            ninja-build cmake build-essential \
-            g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
-            qemu-user-static \
-            python3 ruby unifdef fakeroot meson bubblewrap xdg-dbus-proxy gperf ccache
+#           # Install cross-compilation tool-chain + host tools
+#           sudo apt-get install -y \
+#             ninja-build cmake build-essential \
+#             g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
+#             qemu-user-static \
+#             python3 ruby unifdef fakeroot meson bubblewrap xdg-dbus-proxy gperf ccache
 
-          # Install Python dependencies to fix distutils issue
-          sudo apt-get install -y python3-setuptools python3-pip
-          pip3 install --upgrade pip setuptools wheel
+#           # Install Python dependencies to fix distutils issue
+#           sudo apt-get install -y python3-setuptools python3-pip
+#           pip3 install --upgrade pip setuptools wheel
           
-          # Install additional Python packages for GObject Introspection
-          sudo apt-get install -y python3-gi python3-gi-cairo
-          pip3 install pygobject
+#           # Install additional Python packages for GObject Introspection
+#           sudo apt-get install -y python3-gi python3-gi-cairo
+#           pip3 install pygobject
           
-          # Install GObject Introspection development packages
-          sudo apt-get install -y \
-            gobject-introspection \
-            libgirepository1.0-dev
+#           # Install GObject Introspection development packages
+#           sudo apt-get install -y \
+#             gobject-introspection \
+#             libgirepository1.0-dev
 
-          # Install ARM64 development libraries
-          sudo apt-get install -y \
-            libicu-dev:arm64 libharfbuzz-dev:arm64 \
-            libglib2.0-dev:arm64 libgstreamer1.0-dev:arm64 \
-            libgstreamer-plugins-base1.0-dev:arm64 \
-            libjpeg-dev:arm64 libpng-dev:arm64 libwebp-dev:arm64 \
-            libxml2-dev:arm64 libxslt1-dev:arm64 \
-            libsqlite3-dev:arm64 libsoup-3.0-dev:arm64 \
-            libepoxy-dev:arm64 libgcrypt20-dev:arm64 libtasn1-6-dev:arm64 \
-            libxkbcommon-dev:arm64 \
-            libwayland-dev:arm64 wayland-protocols \
-            libdrm-dev:arm64 libgbm-dev:arm64 \
-            libinput-dev:arm64 libudev-dev:arm64 \
-            libavcodec-dev:arm64 libavformat-dev:arm64 libavutil-dev:arm64 \
-            libgl1-mesa-dev:arm64 libegl1-mesa-dev:arm64 \
-            libsystemd-dev:arm64 libsecret-1-dev:arm64 \
-            libgirepository1.0-dev:arm64 gobject-introspection \
-            libgstreamer-plugins-bad1.0-dev:arm64 \
-            libgstreamer-plugins-good1.0-dev:arm64 \
-            pkg-config:arm64 linux-libc-dev:arm64 libatk1.0-dev:arm64 \
-            libatk-bridge2.0-dev:arm64 flite1-dev:arm64 libjxl-dev:arm64 \
-            libwoff-dev:arm64 libavif-dev:arm64 libseccomp-dev:arm64 \
-            libfontconfig1-dev:arm64
+#           # Install ARM64 development libraries
+#           sudo apt-get install -y \
+#             libicu-dev:arm64 libharfbuzz-dev:arm64 \
+#             libglib2.0-dev:arm64 libgstreamer1.0-dev:arm64 \
+#             libgstreamer-plugins-base1.0-dev:arm64 \
+#             libjpeg-dev:arm64 libpng-dev:arm64 libwebp-dev:arm64 \
+#             libxml2-dev:arm64 libxslt1-dev:arm64 \
+#             libsqlite3-dev:arm64 libsoup-3.0-dev:arm64 \
+#             libepoxy-dev:arm64 libgcrypt20-dev:arm64 libtasn1-6-dev:arm64 \
+#             libxkbcommon-dev:arm64 \
+#             libwayland-dev:arm64 wayland-protocols \
+#             libdrm-dev:arm64 libgbm-dev:arm64 \
+#             libinput-dev:arm64 libudev-dev:arm64 \
+#             libavcodec-dev:arm64 libavformat-dev:arm64 libavutil-dev:arm64 \
+#             libgl1-mesa-dev:arm64 libegl1-mesa-dev:arm64 \
+#             libsystemd-dev:arm64 libsecret-1-dev:arm64 \
+#             libgirepository1.0-dev:arm64 gobject-introspection \
+#             libgstreamer-plugins-bad1.0-dev:arm64 \
+#             libgstreamer-plugins-good1.0-dev:arm64 \
+#             pkg-config:arm64 linux-libc-dev:arm64 libatk1.0-dev:arm64 \
+#             libatk-bridge2.0-dev:arm64 flite1-dev:arm64 libjxl-dev:arm64 \
+#             libwoff-dev:arm64 libavif-dev:arm64 libseccomp-dev:arm64 \
+#             libfontconfig1-dev:arm64
 
-          # Set up ccache for faster rebuilds
-          export CCACHE_DIR=~/.cache/ccache
-          export CCACHE_MAXSIZE=10G
-          export CCACHE_COMPRESS=1
-          export CCACHE_COMPRESSLEVEL=6
-          ccache -s
+#           # Set up ccache for faster rebuilds
+#           export CCACHE_DIR=~/.cache/ccache
+#           export CCACHE_MAXSIZE=10G
+#           export CCACHE_COMPRESS=1
+#           export CCACHE_COMPRESSLEVEL=6
+#           ccache -s
           
-          # Verify ccache is working with cross-compilation
-          echo "Testing ccache with cross-compilation..."
-          ccache aarch64-linux-gnu-gcc --version
-          if [ $? -ne 0 ]; then
-            echo "ERROR: ccache is not working with cross-compilation"
-            exit 1
-          fi
+#           # Verify ccache is working with cross-compilation
+#           echo "Testing ccache with cross-compilation..."
+#           ccache aarch64-linux-gnu-gcc --version
+#           if [ $? -ne 0 ]; then
+#             echo "ERROR: ccache is not working with cross-compilation"
+#             exit 1
+#           fi
 
-          # Set up pkg-config for cross-compilation
-          export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
-          export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+#           # Set up pkg-config for cross-compilation
+#           export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+#           export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
 
-          # Set up GObject Introspection for cross-compilation
-          export GI_SCANNER_DISABLE_CACHE=1
-          export GI_CROSS_LAUNCHER=qemu-aarch64-static
-          export GI_CROSS_COMPILER=aarch64-linux-gnu-gcc
-          export GI_CROSS_PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+#           # Set up GObject Introspection for cross-compilation
+#           export GI_SCANNER_DISABLE_CACHE=1
+#           export GI_CROSS_LAUNCHER=qemu-aarch64-static
+#           export GI_CROSS_COMPILER=aarch64-linux-gnu-gcc
+#           export GI_CROSS_PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
 
-          # Fix Python distutils issue for g-ir-scanner
-          export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
-          export GI_SCANNER_DEBUG=1
+#           # Fix Python distutils issue for g-ir-scanner
+#           export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
+#           export GI_SCANNER_DEBUG=1
           
-          # Set up Python environment for modern Python versions
-          export PYTHONUNBUFFERED=1
-          export PYTHONDONTWRITEBYTECODE=1
+#           # Set up Python environment for modern Python versions
+#           export PYTHONUNBUFFERED=1
+#           export PYTHONDONTWRITEBYTECODE=1
           
-          # Additional GObject Introspection environment variables
-          export GI_SCANNER_EXTRA_ARGS="--no-libtool"
-          export GI_SCANNER_QUIET=1
-          export GI_SCANNER_WARN_ALL=1
-          export GI_SCANNER_WARN_ERROR=1
+#           # Additional GObject Introspection environment variables
+#           export GI_SCANNER_EXTRA_ARGS="--no-libtool"
+#           export GI_SCANNER_QUIET=1
+#           export GI_SCANNER_WARN_ALL=1
+#           export GI_SCANNER_WARN_ERROR=1
 
-          # Clean up temporary apt configuration
-          sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
+#           # Clean up temporary apt configuration
+#           sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
 
-      # ------------------------------------------------------------------
-      # 2. Fetch WPE WebKit source
-      # ------------------------------------------------------------------
-      - name: Download WPE WebKit 2.48.4
-        run: |
-          wget -q https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
-          tar -xf wpewebkit-2.48.4.tar.xz
-          mv wpewebkit-2.48.4 wpewebkit
+#       # ------------------------------------------------------------------
+#       # 2. Fetch WPE WebKit source
+#       # ------------------------------------------------------------------
+#       - name: Download WPE WebKit 2.48.4
+#         run: |
+#           wget -q https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
+#           tar -xf wpewebkit-2.48.4.tar.xz
+#           mv wpewebkit-2.48.4 wpewebkit
 
-      # ------------------------------------------------------------------
-      # 2.5. Build WPE dependencies (with caching)
-      # ------------------------------------------------------------------
-      - name: Build WPE dependencies
-        run: |
-          # Check if dependencies already exist and are valid
-          if [ -f "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" ] && [ -f "/usr/lib/aarch64-linux-gnu/libWPEBackend-fdo-1.0.so" ]; then
-            echo "WPE dependencies already installed, checking if they are valid..."
-            # Test if the libraries are actually usable
-            if file "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" | grep -q "ARM aarch64"; then
-              echo "WPE dependencies are valid ARM64 libraries, skipping build..."
-              exit 0
-            else
-              echo "WPE dependencies exist but are not valid ARM64 libraries, rebuilding..."
-            fi
-          else
-            echo "WPE dependencies not found, building from source..."
-          fi
+#       # ------------------------------------------------------------------
+#       # 2.5. Build WPE dependencies (with caching)
+#       # ------------------------------------------------------------------
+#       - name: Build WPE dependencies
+#         run: |
+#           # Check if dependencies already exist and are valid
+#           if [ -f "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" ] && [ -f "/usr/lib/aarch64-linux-gnu/libWPEBackend-fdo-1.0.so" ]; then
+#             echo "WPE dependencies already installed, checking if they are valid..."
+#             # Test if the libraries are actually usable
+#             if file "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" | grep -q "ARM aarch64"; then
+#               echo "WPE dependencies are valid ARM64 libraries, skipping build..."
+#               exit 0
+#             else
+#               echo "WPE dependencies exist but are not valid ARM64 libraries, rebuilding..."
+#             fi
+#           else
+#             echo "WPE dependencies not found, building from source..."
+#           fi
           
-          # Build libwpe
-          echo "Building libwpe..."
-          wget -q https://wpewebkit.org/releases/libwpe-1.16.2.tar.xz
-          tar -xf libwpe-1.16.2.tar.xz
-          cd libwpe-1.16.2
-          mkdir build && cd build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr \
-            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-            -GNinja
-          ninja
-          sudo ninja install
-          cd ../..
+#           # Build libwpe
+#           echo "Building libwpe..."
+#           wget -q https://wpewebkit.org/releases/libwpe-1.16.2.tar.xz
+#           tar -xf libwpe-1.16.2.tar.xz
+#           cd libwpe-1.16.2
+#           mkdir build && cd build
+#           cmake .. \
+#             -DCMAKE_BUILD_TYPE=Release \
+#             -DCMAKE_INSTALL_PREFIX=/usr \
+#             -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+#             -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+#             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+#             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+#             -GNinja
+#           ninja
+#           sudo ninja install
+#           cd ../..
           
-          # Build wpebackend-fdo (uses Meson)
-          echo "Building wpebackend-fdo..."
-          wget -q https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
-          tar -xf wpebackend-fdo-1.16.0.tar.xz
-          cd wpebackend-fdo-1.16.0
-          mkdir build && cd build
+#           # Build wpebackend-fdo (uses Meson)
+#           echo "Building wpebackend-fdo..."
+#           wget -q https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
+#           tar -xf wpebackend-fdo-1.16.0.tar.xz
+#           cd wpebackend-fdo-1.16.0
+#           mkdir build && cd build
           
-          # Create cross-compilation configuration for Meson
-          cat > cross-file.txt << 'EOF'
-          [binaries]
-          c = 'aarch64-linux-gnu-gcc'
-          cpp = 'aarch64-linux-gnu-g++'
-          ar = 'aarch64-linux-gnu-ar'
-          strip = 'aarch64-linux-gnu-strip'
-          pkgconfig = 'aarch64-linux-gnu-pkg-config'
+#           # Create cross-compilation configuration for Meson
+#           cat > cross-file.txt << 'EOF'
+#           [binaries]
+#           c = 'aarch64-linux-gnu-gcc'
+#           cpp = 'aarch64-linux-gnu-g++'
+#           ar = 'aarch64-linux-gnu-ar'
+#           strip = 'aarch64-linux-gnu-strip'
+#           pkgconfig = 'aarch64-linux-gnu-pkg-config'
           
-          [built-in options]
-          c_args = []
-          c_link_args = []
-          cpp_args = []
-          cpp_link_args = []
+#           [built-in options]
+#           c_args = []
+#           c_link_args = []
+#           cpp_args = []
+#           cpp_link_args = []
           
-          [host_machine]
-          system = 'linux'
-          cpu_family = 'aarch64'
-          cpu = 'aarch64'
-          endian = 'little'
-          EOF
+#           [host_machine]
+#           system = 'linux'
+#           cpu_family = 'aarch64'
+#           cpu = 'aarch64'
+#           endian = 'little'
+#           EOF
           
-          # Set up ccache environment for Meson
-          export CCACHE_DIR=~/.cache/ccache
+#           # Set up ccache environment for Meson
+#           export CCACHE_DIR=~/.cache/ccache
           
-          meson setup .. \
-            --buildtype=release \
-            --prefix=/usr \
-            --cross-file=cross-file.txt
-          ninja
-          sudo ninja install
-          cd ../..
+#           meson setup .. \
+#             --buildtype=release \
+#             --prefix=/usr \
+#             --cross-file=cross-file.txt
+#           ninja
+#           sudo ninja install
+#           cd ../..
           
-          # Update library cache
-          sudo ldconfig
+#           # Update library cache
+#           sudo ldconfig
           
-          # Verify the libraries were built correctly
-          echo "Verifying built libraries..."
-          if [ ! -f "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" ]; then
-            echo "ERROR: libwpe library was not built successfully"
-            exit 1
-          fi
-          if [ ! -f "/usr/lib/libWPEBackend-fdo-1.0.so" ]; then
-            echo "ERROR: wpebackend-fdo library was not built successfully"
-            exit 1
-          fi
-          echo "WPE dependencies built successfully!"
+#           # Verify the libraries were built correctly
+#           echo "Verifying built libraries..."
+#           if [ ! -f "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" ]; then
+#             echo "ERROR: libwpe library was not built successfully"
+#             exit 1
+#           fi
+#           if [ ! -f "/usr/lib/libWPEBackend-fdo-1.0.so" ]; then
+#             echo "ERROR: wpebackend-fdo library was not built successfully"
+#             exit 1
+#           fi
+#           echo "WPE dependencies built successfully!"
 
-      # ------------------------------------------------------------------
-      # 2.6. Package and test libwpe and wpebackend-fdo (with caching)
-      # ------------------------------------------------------------------
-      - name: Create libwpe .deb package
-        run: |
-          # Check if .deb already exists
-          if [ -f "libwpe-aarch64-rpi3b-v1.16.2.deb" ]; then
-            echo "libwpe .deb already exists, skipping..."
-            exit 0
-          fi
+#       # ------------------------------------------------------------------
+#       # 2.6. Package and test libwpe and wpebackend-fdo (with caching)
+#       # ------------------------------------------------------------------
+#       - name: Create libwpe .deb package
+#         run: |
+#           # Check if .deb already exists
+#           if [ -f "libwpe-aarch64-rpi3b-v1.16.2.deb" ]; then
+#             echo "libwpe .deb already exists, skipping..."
+#             exit 0
+#           fi
           
-          # Check if libwpe files exist
-          if [ ! -f "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" ]; then
-            echo "ERROR: libwpe files not found. Please ensure libwpe was built successfully."
-            exit 1
-          fi
+#           # Check if libwpe files exist
+#           if [ ! -f "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" ]; then
+#             echo "ERROR: libwpe files not found. Please ensure libwpe was built successfully."
+#             exit 1
+#           fi
           
-          mkdir -p libwpe-deb-root/DEBIAN
-          mkdir -p libwpe-deb-root/usr/lib/aarch64-linux-gnu
-          mkdir -p libwpe-deb-root/usr/include
-          mkdir -p libwpe-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig
-          cat <<EOF > libwpe-deb-root/DEBIAN/control
-          Package: libwpe-1.0
-          Version: 1.16.2
-          Section: libs
-          Priority: optional
-          Architecture: arm64
-          Maintainer: bhNibir <nibir@example.com>
-          Description: WPE (WebKit Port for Embedded) library for Raspberry Pi 3B+
-          EOF
-          sudo cp -r /usr/lib/aarch64-linux-gnu/libwpe* libwpe-deb-root/usr/lib/aarch64-linux-gnu/
-          sudo cp -r /usr/include/wpe-1.0 libwpe-deb-root/usr/include/
-          sudo cp -r /usr/lib/aarch64-linux-gnu/pkgconfig/wpe* libwpe-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig/
-          fakeroot dpkg-deb --build libwpe-deb-root libwpe-aarch64-rpi3b-v1.16.2.deb
+#           mkdir -p libwpe-deb-root/DEBIAN
+#           mkdir -p libwpe-deb-root/usr/lib/aarch64-linux-gnu
+#           mkdir -p libwpe-deb-root/usr/include
+#           mkdir -p libwpe-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig
+#           cat <<EOF > libwpe-deb-root/DEBIAN/control
+#           Package: libwpe-1.0
+#           Version: 1.16.2
+#           Section: libs
+#           Priority: optional
+#           Architecture: arm64
+#           Maintainer: bhNibir <nibir@example.com>
+#           Description: WPE (WebKit Port for Embedded) library for Raspberry Pi 3B+
+#           EOF
+#           sudo cp -r /usr/lib/aarch64-linux-gnu/libwpe* libwpe-deb-root/usr/lib/aarch64-linux-gnu/
+#           sudo cp -r /usr/include/wpe-1.0 libwpe-deb-root/usr/include/
+#           sudo cp -r /usr/lib/aarch64-linux-gnu/pkgconfig/wpe* libwpe-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig/
+#           fakeroot dpkg-deb --build libwpe-deb-root libwpe-aarch64-rpi3b-v1.16.2.deb
 
-      - name: Create wpebackend-fdo .deb package
-        run: |
-          # Check if .deb already exists
-          if [ -f "wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb" ]; then
-            echo "wpebackend-fdo .deb already exists, skipping..."
-            exit 0
-          fi
+#       - name: Create wpebackend-fdo .deb package
+#         run: |
+#           # Check if .deb already exists
+#           if [ -f "wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb" ]; then
+#             echo "wpebackend-fdo .deb already exists, skipping..."
+#             exit 0
+#           fi
           
-          # Check if wpebackend-fdo files exist
-          if [ ! -f "/usr/lib/libWPEBackend-fdo-1.0.so" ]; then
-            echo "ERROR: wpebackend-fdo files not found. Please ensure wpebackend-fdo was built successfully."
-            exit 1
-          fi
+#           # Check if wpebackend-fdo files exist
+#           if [ ! -f "/usr/lib/libWPEBackend-fdo-1.0.so" ]; then
+#             echo "ERROR: wpebackend-fdo files not found. Please ensure wpebackend-fdo was built successfully."
+#             exit 1
+#           fi
           
-          mkdir -p wpebackend-deb-root/DEBIAN
-          mkdir -p wpebackend-deb-root/usr/lib/aarch64-linux-gnu
-          mkdir -p wpebackend-deb-root/usr/include
-          mkdir -p wpebackend-deb-root/usr/lib/pkgconfig
-          cat <<EOF > wpebackend-deb-root/DEBIAN/control
-          Package: wpebackend-fdo
-          Version: 1.16.0
-          Section: libs
-          Priority: optional
-          Architecture: arm64
-          Maintainer: bhNibir <nibir@example.com>
-          Description: WPE Backend for FreeDesktop.org for Raspberry Pi 3B+
-          EOF
-          sudo cp -r /usr/lib/libWPEBackend* wpebackend-deb-root/usr/lib/aarch64-linux-gnu/
-          sudo cp -r /usr/include/wpe-fdo-1.0 wpebackend-deb-root/usr/include/
-          sudo cp -r /usr/lib/pkgconfig/wpebackend-fdo-1.0.pc wpebackend-deb-root/usr/lib/pkgconfig/
-          fakeroot dpkg-deb --build wpebackend-deb-root wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
+#           mkdir -p wpebackend-deb-root/DEBIAN
+#           mkdir -p wpebackend-deb-root/usr/lib/aarch64-linux-gnu
+#           mkdir -p wpebackend-deb-root/usr/include
+#           mkdir -p wpebackend-deb-root/usr/lib/pkgconfig
+#           cat <<EOF > wpebackend-deb-root/DEBIAN/control
+#           Package: wpebackend-fdo
+#           Version: 1.16.0
+#           Section: libs
+#           Priority: optional
+#           Architecture: arm64
+#           Maintainer: bhNibir <nibir@example.com>
+#           Description: WPE Backend for FreeDesktop.org for Raspberry Pi 3B+
+#           EOF
+#           sudo cp -r /usr/lib/libWPEBackend* wpebackend-deb-root/usr/lib/aarch64-linux-gnu/
+#           sudo cp -r /usr/include/wpe-fdo-1.0 wpebackend-deb-root/usr/include/
+#           sudo cp -r /usr/lib/pkgconfig/wpebackend-fdo-1.0.pc wpebackend-deb-root/usr/lib/pkgconfig/
+#           fakeroot dpkg-deb --build wpebackend-deb-root wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
 
-      - name: Upload early .deb packages as artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: wpe-dependencies-deb-packages
-          path: |
-            libwpe-aarch64-rpi3b-v1.16.2.deb
-            wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
-          retention-days: 30
+#       - name: Upload early .deb packages as artifacts
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: wpe-dependencies-deb-packages
+#           path: |
+#             libwpe-aarch64-rpi3b-v1.16.2.deb
+#             wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
+#           retention-days: 30
 
-      - name: Test upload early .deb packages to release
-        uses: softprops/action-gh-release@v2
-        continue-on-error: true
-        with:
-          tag_name: v1.16.2-deps
-          name: WPE Dependencies 1.16.2 (Raspberry Pi 3B+)
-          files: |
-            libwpe-aarch64-rpi3b-v1.16.2.deb
-            wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#       - name: Test upload early .deb packages to release
+#         uses: softprops/action-gh-release@v2
+#         continue-on-error: true
+#         with:
+#           tag_name: v1.16.2-deps
+#           name: WPE Dependencies 1.16.2 (Raspberry Pi 3B+)
+#           files: |
+#             libwpe-aarch64-rpi3b-v1.16.2.deb
+#             wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ------------------------------------------------------------------
-      # 3. Configure & build (with caching)
-      # ------------------------------------------------------------------
-      - name: Configure and build WPE WebKit
-        timeout-minutes: 300
-        run: |
-          # Check if WPE WebKit .deb already exists
-          if [ -f "wpewebkit-aarch64-rpi3b-v2.48.4.deb" ]; then
-            echo "WPE WebKit .deb already exists, skipping build..."
-            exit 0
-          fi
+#       # ------------------------------------------------------------------
+#       # 3. Configure & build (with caching)
+#       # ------------------------------------------------------------------
+#       - name: Configure and build WPE WebKit
+#         timeout-minutes: 300
+#         run: |
+#           # Check if WPE WebKit .deb already exists
+#           if [ -f "wpewebkit-aarch64-rpi3b-v2.48.4.deb" ]; then
+#             echo "WPE WebKit .deb already exists, skipping build..."
+#             exit 0
+#           fi
           
-          mkdir -p wpewebkit/build
-          cd wpewebkit/build
+#           mkdir -p wpewebkit/build
+#           cd wpewebkit/build
           
-          # Set up pkg-config for cross-compilation
-          export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
-          export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+#           # Set up pkg-config for cross-compilation
+#           export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+#           export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
           
-          # Set up cross-compilation environment with ccache
-          export CC=ccache
-          export CXX=ccache
-          export AR=aarch64-linux-gnu-ar
-          export STRIP=aarch64-linux-gnu-strip
-          export RANLIB=aarch64-linux-gnu-ranlib
-          export LD=aarch64-linux-gnu-ld
-          export PKG_CONFIG=aarch64-linux-gnu-pkg-config
+#           # Set up cross-compilation environment with ccache
+#           export CC=ccache
+#           export CXX=ccache
+#           export AR=aarch64-linux-gnu-ar
+#           export STRIP=aarch64-linux-gnu-strip
+#           export RANLIB=aarch64-linux-gnu-ranlib
+#           export LD=aarch64-linux-gnu-ld
+#           export PKG_CONFIG=aarch64-linux-gnu-pkg-config
           
-          cmake .. \
-            -DPORT=WPE \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DCMAKE_INSTALL_PREFIX=/usr \
-            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-            -DCMAKE_PKG_CONFIG_EXECUTABLE=aarch64-linux-gnu-pkg-config \
-            -DENABLE_DOCUMENTATION=OFF \
-            -DENABLE_ENCRYPTED_MEDIA=ON \
-            -DENABLE_WPE_PLATFORM=ON \
-            -DENABLE_WPE_PLATFORM_DRM=ON \
-            -DENABLE_WPE_PLATFORM_HEADLESS=ON \
-            -DUSE_LIBBACKTRACE=OFF \
-            -DCMAKE_CROSSCOMPILING=ON \
-            -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-            -DBWRAP_EXECUTABLE=/usr/bin/bwrap \
-            -DDBUS_PROXY_EXECUTABLE=/usr/bin/xdg-dbus-proxy \
-            -GNinja
+#           cmake .. \
+#             -DPORT=WPE \
+#             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+#             -DCMAKE_INSTALL_PREFIX=/usr \
+#             -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+#             -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+#             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+#             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+#             -DCMAKE_PKG_CONFIG_EXECUTABLE=aarch64-linux-gnu-pkg-config \
+#             -DENABLE_DOCUMENTATION=OFF \
+#             -DENABLE_ENCRYPTED_MEDIA=ON \
+#             -DENABLE_WPE_PLATFORM=ON \
+#             -DENABLE_WPE_PLATFORM_DRM=ON \
+#             -DENABLE_WPE_PLATFORM_HEADLESS=ON \
+#             -DUSE_LIBBACKTRACE=OFF \
+#             -DCMAKE_CROSSCOMPILING=ON \
+#             -DCMAKE_SYSTEM_NAME=Linux \
+#             -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+#             -DBWRAP_EXECUTABLE=/usr/bin/bwrap \
+#             -DDBUS_PROXY_EXECUTABLE=/usr/bin/xdg-dbus-proxy \
+#             -GNinja
           
-          # Build with parallel jobs and memory optimization
-          ninja -j$(nproc) -l$(nproc)
-          DESTDIR=$GITHUB_WORKSPACE/deb-root ninja install
+#           # Build with parallel jobs and memory optimization
+#           ninja -j$(nproc) -l$(nproc)
+#           DESTDIR=$GITHUB_WORKSPACE/deb-root ninja install
 
-      # ------------------------------------------------------------------
-      # 4. Package all components (with caching)
-      # ------------------------------------------------------------------
-      - name: Create WPE WebKit .deb package
-        run: |
-          # Check if .deb already exists
-          if [ -f "wpewebkit-aarch64-rpi3b-v2.48.4.deb" ]; then
-            echo "WPE WebKit .deb already exists, skipping..."
-            exit 0
-          fi
+#       # ------------------------------------------------------------------
+#       # 4. Package all components (with caching)
+#       # ------------------------------------------------------------------
+#       - name: Create WPE WebKit .deb package
+#         run: |
+#           # Check if .deb already exists
+#           if [ -f "wpewebkit-aarch64-rpi3b-v2.48.4.deb" ]; then
+#             echo "WPE WebKit .deb already exists, skipping..."
+#             exit 0
+#           fi
           
-          mkdir -p deb-root/DEBIAN
-          mkdir -p deb-root/usr/lib/aarch64-linux-gnu
-          mkdir -p deb-root/usr/include
-          mkdir -p deb-root/usr/bin
-          mkdir -p deb-root/usr/share
-          cat <<EOF > deb-root/DEBIAN/control
-          Package: wpewebkit
-          Version: 2.48.4
-          Section: web
-          Priority: optional
-          Architecture: arm64
-          Maintainer: bhNibir <nibir@example.com>
-          Description: WPE WebKit 2.48.4 built for Raspberry Pi 3B+
-          EOF
-          # Copy libraries
-          sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/lib/* deb-root/usr/lib/
-          # Copy headers
-          sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/include/* deb-root/usr/include/
-          # Copy binaries
-          sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/bin/* deb-root/usr/bin/
-          # Copy share files
-          sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/share/* deb-root/usr/share/
-          fakeroot dpkg-deb --build deb-root wpewebkit-aarch64-rpi3b-v2.48.4.deb
+#           mkdir -p deb-root/DEBIAN
+#           mkdir -p deb-root/usr/lib/aarch64-linux-gnu
+#           mkdir -p deb-root/usr/include
+#           mkdir -p deb-root/usr/bin
+#           mkdir -p deb-root/usr/share
+#           cat <<EOF > deb-root/DEBIAN/control
+#           Package: wpewebkit
+#           Version: 2.48.4
+#           Section: web
+#           Priority: optional
+#           Architecture: arm64
+#           Maintainer: bhNibir <nibir@example.com>
+#           Description: WPE WebKit 2.48.4 built for Raspberry Pi 3B+
+#           EOF
+#           # Copy libraries
+#           sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/lib/* deb-root/usr/lib/
+#           # Copy headers
+#           sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/include/* deb-root/usr/include/
+#           # Copy binaries
+#           sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/bin/* deb-root/usr/bin/
+#           # Copy share files
+#           sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/share/* deb-root/usr/share/
+#           fakeroot dpkg-deb --build deb-root wpewebkit-aarch64-rpi3b-v2.48.4.deb
 
-      # ------------------------------------------------------------------
-      # 4.5. Cache statistics and cleanup
-      # ------------------------------------------------------------------
-      - name: Show ccache statistics
-        run: |
-          ccache -s
-          echo "Build cache statistics:"
-          du -sh ~/.cache/ccache || echo "No ccache directory found"
+#       # ------------------------------------------------------------------
+#       # 4.5. Cache statistics and cleanup
+#       # ------------------------------------------------------------------
+#       - name: Show ccache statistics
+#         run: |
+#           ccache -s
+#           echo "Build cache statistics:"
+#           du -sh ~/.cache/ccache || echo "No ccache directory found"
 
-      - name: Save build cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/ccache
-            build-cache/
-            .ccache/
-          key: ${{ runner.os }}-build-cache-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-build-cache-
+#       - name: Save build cache
+#         uses: actions/cache@v4
+#         with:
+#           path: |
+#             ~/.cache/ccache
+#             build-cache/
+#             .ccache/
+#           key: ${{ runner.os }}-build-cache-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
+#           restore-keys: |
+#             ${{ runner.os }}-build-cache-
 
-      # ------------------------------------------------------------------
-      # 5. Store artifacts
-      # ------------------------------------------------------------------
-      - name: Upload .deb packages as artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: wpe-deb-packages
-          path: |
-            *.deb
-          retention-days: 30
+#       # ------------------------------------------------------------------
+#       # 5. Store artifacts
+#       # ------------------------------------------------------------------
+#       - name: Upload .deb packages as artifacts
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: wpe-deb-packages
+#           path: |
+#             *.deb
+#           retention-days: 30
 
-      # ------------------------------------------------------------------
-      # 6. Release (optional - will fail gracefully)
-      # ------------------------------------------------------------------
-      - name: Upload release .deb packages
-        uses: softprops/action-gh-release@v2
-        continue-on-error: true
-        with:
-          tag_name: v2.48.4
-          name: WPE WebKit 2.48.4 (Raspberry Pi 3B+)
-          files: |
-            wpewebkit-aarch64-rpi3b-v2.48.4.deb
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#       # ------------------------------------------------------------------
+#       # 6. Release (optional - will fail gracefully)
+#       # ------------------------------------------------------------------
+#       - name: Upload release .deb packages
+#         uses: softprops/action-gh-release@v2
+#         continue-on-error: true
+#         with:
+#           tag_name: v2.48.4
+#           name: WPE WebKit 2.48.4 (Raspberry Pi 3B+)
+#           files: |
+#             wpewebkit-aarch64-rpi3b-v2.48.4.deb
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
