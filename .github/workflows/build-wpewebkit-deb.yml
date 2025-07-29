@@ -124,7 +124,8 @@ jobs:
             libgstreamer-plugins-good1.0-dev:arm64 \
             pkg-config:arm64 linux-libc-dev:arm64 libatk1.0-dev:arm64 \
             libatk-bridge2.0-dev:arm64 flite1-dev:arm64 libjxl-dev:arm64 \
-            libwoff-dev:arm64 libavif-dev:arm64 libseccomp-dev:arm64
+            libwoff-dev:arm64 libavif-dev:arm64 libseccomp-dev:arm64 \
+            libfontconfig1-dev:arm64
 
           # Set up pkg-config for cross-compilation
           export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
