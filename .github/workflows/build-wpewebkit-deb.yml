@@ -122,7 +122,7 @@ jobs:
             libgirepository1.0-dev:arm64 gobject-introspection \
             libgstreamer-plugins-bad1.0-dev:arm64 \
             libgstreamer-plugins-good1.0-dev:arm64 \
-            pkg-config:arm64 libwpe-dev:arm64
+            pkg-config:arm64
 
           # Set up pkg-config for cross-compilation
           export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
@@ -139,6 +139,44 @@ jobs:
           wget -q https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
           tar -xf wpewebkit-2.48.4.tar.xz
           mv wpewebkit-2.48.4 wpewebkit
+
+      # ------------------------------------------------------------------
+      # 2.5. Build WPE dependencies
+      # ------------------------------------------------------------------
+      - name: Build WPE dependencies
+        run: |
+          # Build libwpe
+          wget -q https://wpewebkit.org/releases/libwpe-1.16.2.tar.xz
+          tar -xf libwpe-1.16.2.tar.xz
+          cd libwpe-1.16.2
+          mkdir build && cd build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+            -GNinja
+          ninja
+          sudo ninja install
+          cd ../..
+          
+          # Build wpebackend-fdo
+          wget -q https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
+          tar -xf wpebackend-fdo-1.16.0.tar.xz
+          cd wpebackend-fdo-1.16.0
+          mkdir build && cd build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+            -GNinja
+          ninja
+          sudo ninja install
+          cd ../..
+          
+          # Update library cache
+          sudo ldconfig
 
       # ------------------------------------------------------------------
       # 3. Configure & build
