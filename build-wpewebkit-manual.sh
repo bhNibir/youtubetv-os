@@ -151,12 +151,19 @@ install_dependencies() {
         qemu-user-static \
         python3 ruby unifdef fakeroot meson bubblewrap xdg-dbus-proxy gperf ccache
     
-    # Install Python dependencies and development libraries
+    # Install Python dependencies and development libraries (host architecture)
     sudo apt-get install -y \
         python3-setuptools python3-pip python3-gi python3-gi-cairo \
         python3-dev python3-venv \
         libcairo2-dev libglib2.0-dev libgirepository1.0-dev \
         gobject-introspection libgirepository1.0-dev
+    
+    # Install ARM64 GObject Introspection packages for cross-compilation
+    print_status "Installing ARM64 GObject Introspection packages..."
+    sudo apt-get install -y \
+        python3-gi:arm64 python3-gi-cairo:arm64 \
+        gobject-introspection:arm64 libgirepository1.0-dev:arm64 \
+        libglib2.0-dev:arm64 libcairo2-dev:arm64
     
     # Install Python packages (with fallback if pip fails)
     print_status "Installing Python packages..."
@@ -202,35 +209,52 @@ install_dependencies() {
     print_success "Dependencies installed successfully"
 }
 
-# Function to setup build environment
+# Function to set up build environment
 setup_build_environment() {
     print_status "Setting up build environment..."
     
-    # Set up ccache
+    # Set up ccache for faster rebuilds
     export CCACHE_DIR=~/.cache/ccache
-    export CCACHE_MAXSIZE=10G
+    export CCACHE_MAXSIZE=5G
     export CCACHE_COMPRESS=1
-    export CCACHE_COMPRESSLEVEL=6
+    export CCACHE_COMPRESSLEVEL=9
+    ccache -s
     
-    # Create ccache directory if it doesn't exist
-    mkdir -p ~/.cache/ccache
-    
-    # Set up environment variables
+    # Set up pkg-config for cross-compilation
     export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
     export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+    
+    # Set up GObject Introspection for cross-compilation
     export GI_SCANNER_DISABLE_CACHE=1
     export GI_CROSS_LAUNCHER=qemu-aarch64-static
     export GI_CROSS_COMPILER=aarch64-linux-gnu-gcc
     export GI_CROSS_PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
-    export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
+    
+    # Set up Python environment for cross-compilation
+    export PYTHONPATH="/usr/lib/python3/dist-packages:/usr/lib/aarch64-linux-gnu/python3/dist-packages:$PYTHONPATH"
+    export GI_SCANNER_DEBUG=1
     export PYTHONUNBUFFERED=1
     export PYTHONDONTWRITEBYTECODE=1
+    
+    # Additional GObject Introspection environment variables
     export GI_SCANNER_EXTRA_ARGS="--no-libtool"
     export GI_SCANNER_QUIET=1
     export GI_SCANNER_WARN_ALL=1
     export GI_SCANNER_WARN_ERROR=1
     
-    print_success "Build environment configured"
+    # Set up cross-compilation environment
+    export CC=aarch64-linux-gnu-gcc
+    export CXX=aarch64-linux-gnu-g++
+    export AR=aarch64-linux-gnu-ar
+    export STRIP=aarch64-linux-gnu-strip
+    export RANLIB=aarch64-linux-gnu-ranlib
+    export LD=aarch64-linux-gnu-ld
+    export PKG_CONFIG=aarch64-linux-gnu-pkg-config
+    
+    # Set up ccache for cross-compilation
+    export CCACHE_PREFIX=aarch64-linux-gnu-
+    
+    print_success "Build environment configured for ARM64 cross-compilation"
 }
 
 # Function to build libwpe
