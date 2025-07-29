@@ -121,9 +121,7 @@ jobs:
             libsystemd-dev:arm64 libsecret-1-dev:arm64 \
             libgirepository1.0-dev:arm64 gobject-introspection \
             libgstreamer-plugins-bad1.0-dev:arm64 \
-            libgstreamer-plugins-good1.0-dev:arm64 \
-            libgstreamer-plugins-ugly1.0-dev:arm64 \
-            libgstreamer-libav1.0-dev:arm64
+            libgstreamer-plugins-good1.0-dev:arm64
 
           # Clean up temporary apt configuration
           sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
