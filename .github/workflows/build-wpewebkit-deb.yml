@@ -13,28 +13,29 @@ jobs:
     steps:
       - name: Set up build environment
         run: |
-          # 1. Add arm64 architecture
+          # 1. Add arm64
           sudo dpkg --add-architecture arm64
 
-          # 2. Clean out any conflicting lists
-          sudo rm -f /etc/apt/sources.list.d/*.list
+          # 2. Remove every existing list that could pull in the wrong URIs
+          sudo rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list
 
-          # 3. One single sources.list with arch-qualified URIs
-          sudo tee /etc/apt/sources.list >/dev/null <<EOF
-          # AMD64
+          # 3. AMD64 only
+          sudo tee /etc/apt/sources.list.d/amd64.list >/dev/null <<EOF
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)          main restricted universe multiverse
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates  main restricted universe multiverse
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-backports main restricted universe multiverse
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
+          EOF
 
-          # ARM64 (ports)
+          # 4. ARM64 only
+          sudo tee /etc/apt/sources.list.d/arm64.list >/dev/null <<EOF
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)          main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates  main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-backports main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
           EOF
 
-          # 4. Update & install
+          # 5. Update & install
           sudo apt-get update -qq
           sudo apt-get install -y \
             ninja-build cmake build-essential \
