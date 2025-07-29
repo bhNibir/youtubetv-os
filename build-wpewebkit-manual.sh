@@ -54,24 +54,87 @@ check_repository_config() {
     
     # Get Ubuntu version
     UBUNTU_VERSION=$(lsb_release -cs)
+    echo "Ubuntu version: $UBUNTU_VERSION"
     
-    # Check if we're on Ubuntu 24.04 (Noble)
-    if [ "$UBUNTU_VERSION" = "noble" ]; then
-        print_status "Ubuntu 24.04 detected - configuring ARM64 repositories..."
+    # Completely reset apt configuration to bypass mirror system (same as GitHub workflow)
+    print_status "Resetting apt configuration to bypass mirror system..."
+    sudo rm -rf /etc/apt/sources.list.d/
+    sudo mkdir -p /etc/apt/sources.list.d/
+    sudo rm -f /etc/apt/sources.list
+    sudo rm -f /etc/apt/apt-mirrors.txt
+    sudo rm -f /etc/apt/apt.conf.d/*mirror*
+    sudo rm -f /etc/apt/apt.conf.d/*Mirror*
+    
+    # Clear all apt caches and lists
+    sudo apt-get clean
+    sudo rm -rf /var/lib/apt/lists/*
+    
+    # Create AMD64 sources.list using echo (same as GitHub workflow)
+    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list
+    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+    
+    # Create ARM64 sources file using echo (same as GitHub workflow)
+    echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
+    echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+    echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+    echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+    
+    # Force apt to use direct sources without mirrors (same as GitHub workflow)
+    echo 'Acquire::http::Pipeline-Depth "0";' | sudo tee /etc/apt/apt.conf.d/99-direct-sources
+    echo 'Acquire::http::No-Cache=True;' | sudo tee -a /etc/apt/apt.conf.d/99-direct-sources
+    echo 'APT::Get::AllowUnauthenticated "false";' | sudo tee -a /etc/apt/apt.conf.d/99-direct-sources
+    
+    # Update package lists
+    print_status "Updating package lists..."
+    sudo apt-get update -qq
+    
+    # Fallback: If update fails, try with different approach (same as GitHub workflow)
+    if [ $? -ne 0 ]; then
+        print_warning "First apt update failed, trying alternative approach..."
+        # Remove all apt configuration and start fresh
+        sudo rm -f /etc/apt/sources.list
+        sudo rm -f /etc/apt/sources.list.d/*
+        sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
+        sudo mkdir -p /etc/apt/sources.list.d/
         
-        # Remove any existing ARM64 sources that might be incorrect
-        sudo rm -f /etc/apt/sources.list.d/arm64.list
+        # Use minimal sources with echo
+        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main" | sudo tee /etc/apt/sources.list
+        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main" | sudo tee -a /etc/apt/sources.list
         
-        # Create proper ARM64 sources for Ubuntu 24.04
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main" | sudo tee /etc/apt/sources.list.d/arm64.list
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main" | sudo tee -a /etc/apt/sources.list.d/arm64.list
         
-        print_success "ARM64 repositories configured for Ubuntu 24.04"
-    else
-        print_status "Using standard ARM64 repositories for Ubuntu $UBUNTU_VERSION"
+        sudo apt-get clean
+        sudo rm -rf /var/lib/apt/lists/*
+        sudo apt-get update -qq
     fi
+    
+    # Third fallback: If still failing, try with environment variables (same as GitHub workflow)
+    if [ $? -ne 0 ]; then
+        print_warning "Second approach also failed, trying with environment variables..."
+        # Set environment variables to bypass mirror system
+        export APT_CONFIG=/dev/null
+        export APT_CONFIG_FILE=/dev/null
+        
+        sudo rm -f /etc/apt/sources.list
+        sudo rm -f /etc/apt/sources.list.d/*
+        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list
+        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+        
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+        
+        sudo apt-get clean
+        sudo rm -rf /var/lib/apt/lists/*
+        sudo apt-get update -qq
+    fi
+    
+    # Clean up temporary apt configuration
+    sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
+    
+    print_success "Repository configuration completed"
 }
 
 # Function to install dependencies
@@ -80,9 +143,6 @@ install_dependencies() {
     
     # Add ARM64 architecture
     sudo dpkg --add-architecture arm64
-    
-    # Update package lists
-    sudo apt-get update
     
     # Install essential build tools
     sudo apt-get install -y \
