@@ -28,7 +28,7 @@ jobs:
         run: |
           wget https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
           tar -xf wpewebkit-2.48.4.tar.xz
-          mv WebKit-wpewebkit-2.48.4 wpewebkit
+          mv wpewebkit-2.48.4 wpewebkit
 
       - name: Configure and build WPE WebKit
         run: |
