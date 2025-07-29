@@ -13,17 +13,18 @@ jobs:
     steps:
       - name: Set up build environment
         run: |
+          sudo dpkg --add-architecture arm64
           sudo apt-get update
           sudo apt-get install -y \
-            ninja-build cmake build-essential wget \
-            fakeroot dpkg-dev devscripts \
+            ninja-build cmake build-essential \
             g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
             qemu-user-static \
-            libglib2.0-dev libgstreamer1.0-dev \
-            libgstreamer-plugins-base1.0-dev \
-            libjpeg-dev libpng-dev libwebp-dev \
-            libharfbuzz-dev libicu-dev \
+            libicu-dev:arm64 libharfbuzz-dev:arm64 \
+            libglib2.0-dev:arm64 libgstreamer1.0-dev:arm64 \
+            libgstreamer-plugins-base1.0-dev:arm64 \
+            libjpeg-dev:arm64 libpng-dev:arm64 libwebp-dev:arm64 \
             python3 ruby unifdef
+
 
       - name: Download WPEWebKit v2.48.4 source
         run: |
