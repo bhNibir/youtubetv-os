@@ -222,6 +222,10 @@ jobs:
             -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
             -DCMAKE_PKG_CONFIG_EXECUTABLE=aarch64-linux-gnu-pkg-config \
             -DENABLE_DOCUMENTATION=OFF \
+            -DENABLE_ENCRYPTED_MEDIA=ON \
+            -DENABLE_WPE_PLATFORM=ON \
+            -DENABLE_WPE_PLATFORM_DRM=ON \
+            -DENABLE_WPE_PLATFORM_HEADLESS=ON \
             -DUSE_LIBBACKTRACE=OFF \
             -GNinja
           ninja
