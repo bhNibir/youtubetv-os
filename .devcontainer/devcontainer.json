@@ -1,0 +1,16 @@
+{
+    "name": "WPE WebKit 2.48.4 ARM64 Build",
+    "build": {
+      "dockerfile": "Dockerfile",
+      "context": ".",
+      "args": { "WEBKIT_BRANCH": "wpewebkit-2.48.4" }
+    },
+    "settings": {},
+    "postCreateCommand": "bash ./setup.sh",
+    "customizations": {
+      "vscode": {
+        "extensions": ["ms-vscode.cpptools", "ms-vscode.cmake-tools"]
+      }
+    }
+  }
+  

@@ -1,69 +1,69 @@
-name: Build WPE WebKit from tarball
+# name: Build WPE WebKit from tarball
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    name: Build WPEWebKit v2.48.4 from source tarball
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     name: Build WPEWebKit v2.48.4 from source tarball
 
-    steps:
-      - name: Set up build environment
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            ninja-build cmake build-essential wget \
-            fakeroot dpkg-dev devscripts \
-            g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
-            qemu-user-static \
-            libglib2.0-dev libgstreamer1.0-dev \
-            libgstreamer-plugins-base1.0-dev \
-            libjpeg-dev libpng-dev libwebp-dev \
-            libharfbuzz-dev python3 ruby unifdef
+#     steps:
+#       - name: Set up build environment
+#         run: |
+#           sudo apt-get update
+#           sudo apt-get install -y \
+#             ninja-build cmake build-essential wget \
+#             fakeroot dpkg-dev devscripts \
+#             g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
+#             qemu-user-static \
+#             libglib2.0-dev libgstreamer1.0-dev \
+#             libgstreamer-plugins-base1.0-dev \
+#             libjpeg-dev libpng-dev libwebp-dev \
+#             libharfbuzz-dev python3 ruby unifdef
 
-      - name: Download WPEWebKit v2.48.4 source
-        run: |
-          wget https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
-          tar -xf wpewebkit-2.48.4.tar.gz
-          mv WebKit-wpewebkit-2.48.4 wpewebkit
+#       - name: Download WPEWebKit v2.48.4 source
+#         run: |
+#           wget https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
+#           tar -xf wpewebkit-2.48.4.tar.gz
+#           mv WebKit-wpewebkit-2.48.4 wpewebkit
 
-      - name: Configure and build WPE WebKit
-        run: |
-          mkdir -p wpewebkit/build
-          cd wpewebkit/build
-          cmake .. \
-            -DPORT=WPE \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DCMAKE_INSTALL_PREFIX=/usr \
-            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-            -GNinja
-          ninja
-          DESTDIR=$GITHUB_WORKSPACE/deb-root ninja install
+#       - name: Configure and build WPE WebKit
+#         run: |
+#           mkdir -p wpewebkit/build
+#           cd wpewebkit/build
+#           cmake .. \
+#             -DPORT=WPE \
+#             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+#             -DCMAKE_INSTALL_PREFIX=/usr \
+#             -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+#             -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+#             -GNinja
+#           ninja
+#           DESTDIR=$GITHUB_WORKSPACE/deb-root ninja install
 
-      - name: Create .deb package
-        run: |
-          mkdir -p deb-root/DEBIAN
-          cat <<EOF > deb-root/DEBIAN/control
-          Package: wpewebkit
-          Version: 2.48.4
-          Section: web
-          Priority: optional
-          Architecture: arm64
-          Maintainer: bhNibir <nibir@example.com>
-          Description: WPE WebKit 2.48.4 for Raspberry Pi 3B+
-          EOF
+#       - name: Create .deb package
+#         run: |
+#           mkdir -p deb-root/DEBIAN
+#           cat <<EOF > deb-root/DEBIAN/control
+#           Package: wpewebkit
+#           Version: 2.48.4
+#           Section: web
+#           Priority: optional
+#           Architecture: arm64
+#           Maintainer: bhNibir <nibir@example.com>
+#           Description: WPE WebKit 2.48.4 for Raspberry Pi 3B+
+#           EOF
 
-          fakeroot dpkg-deb --build deb-root wpewebkit-aarch64-rpi3b-v2.48.4.deb
+#           fakeroot dpkg-deb --build deb-root wpewebkit-aarch64-rpi3b-v2.48.4.deb
 
-      - name: Upload release .deb package
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v2.48.4
-          name: WPE WebKit 2.48.4 (Raspberry Pi 3B+)
-          files: wpewebkit-aarch64-rpi3b-v2.48.4.deb
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#       - name: Upload release .deb package
+#         uses: softprops/action-gh-release@v2
+#         with:
+#           tag_name: v2.48.4
+#           name: WPE WebKit 2.48.4 (Raspberry Pi 3B+)
+#           files: wpewebkit-aarch64-rpi3b-v2.48.4.deb
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
