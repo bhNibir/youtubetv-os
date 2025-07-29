@@ -13,59 +13,35 @@ jobs:
     steps:
       - name: Set up build environment
         run: |
-          # Add ARM64 architecture
+          # 1. Add arm64 architecture
           sudo dpkg --add-architecture arm64
-          
-          # Backup original sources
-          sudo cp /etc/apt/sources.list /etc/apt/sources.list.backup
-          sudo cp -r /etc/apt/sources.list.d /etc/apt/sources.list.d.backup
-          
-          # Remove ARM64 architecture temporarily to clean up any cached issues
-          sudo dpkg --remove-architecture arm64 || true
-          sudo apt-get update
-          
-          # Re-add ARM64 architecture
-          sudo dpkg --add-architecture arm64
-          
-          # Create a completely new sources configuration
-          sudo tee /etc/apt/sources.list > /dev/null <<EOF
-          # AMD64 repositories
-          deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main restricted universe multiverse
-          deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates main restricted universe multiverse
+
+          # 2. Clean out any conflicting lists
+          sudo rm -f /etc/apt/sources.list.d/*.list
+
+          # 3. One single sources.list with arch-qualified URIs
+          sudo tee /etc/apt/sources.list >/dev/null <<EOF
+          # AMD64
+          deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)          main restricted universe multiverse
+          deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates  main restricted universe multiverse
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-backports main restricted universe multiverse
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
-          EOF
-          
-          # Backup and modify existing sources.list.d files instead of removing them
-          for file in /etc/apt/sources.list.d/*.list; do
-            if [ -f "$file" ]; then
-              # Add architecture restrictions to existing files
-              sudo sed -i 's/^deb \([^[]*\)$/deb [arch=amd64] \1/' "$file"
-              sudo sed -i 's/^deb-src \([^[]*\)$/deb-src [arch=amd64] \1/' "$file"
-              # Fix lines that already have architecture but might include arm64
-              sudo sed -i 's/\[arch=[^]]*\]/[arch=amd64]/g' "$file"
-            fi
-          done
-          
-          # Create ARM64 sources using ports.ubuntu.com only
-          sudo tee /etc/apt/sources.list.d/arm64.list > /dev/null <<EOF
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs) main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates main restricted universe multiverse
+
+          # ARM64 (ports)
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)          main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates  main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-backports main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
           EOF
-          
-          # Update package lists
-          sudo apt-get update
-          
-          # Install build tools and cross-compilation toolchain
+
+          # 4. Update & install
+          sudo apt-get update -qq
           sudo apt-get install -y \
             ninja-build cmake build-essential \
             g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
             qemu-user-static \
             python3 ruby unifdef fakeroot
-          
-          # Install ARM64 development libraries
+
           sudo apt-get install -y \
             libicu-dev:arm64 libharfbuzz-dev:arm64 \
             libglib2.0-dev:arm64 libgstreamer1.0-dev:arm64 \
