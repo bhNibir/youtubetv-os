@@ -9,6 +9,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Build WPE WebKit 2.48.4 (arm64)
+    
+    # Add permissions for creating releases
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
 
     steps:
       # ------------------------------------------------------------------
