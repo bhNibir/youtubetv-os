@@ -16,12 +16,21 @@ jobs:
           # Add ARM64 architecture
           sudo dpkg --add-architecture arm64
           
-          # Backup original sources.list
+          # Backup original sources
           sudo cp /etc/apt/sources.list /etc/apt/sources.list.backup
+          sudo cp -r /etc/apt/sources.list.d /etc/apt/sources.list.d.backup
           
-          # Configure sources to exclude ARM64 from default repos and use ports.ubuntu.com
+          # Configure all existing sources to exclude ARM64
           sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
           sudo sed -i 's/^deb-src /deb-src [arch=amd64] /' /etc/apt/sources.list
+          
+          # Fix all files in sources.list.d to exclude ARM64
+          for file in /etc/apt/sources.list.d/*.list; do
+            if [ -f "$file" ]; then
+              sudo sed -i 's/^deb \([^[]*\)$/deb [arch=amd64] \1/' "$file"
+              sudo sed -i 's/^deb-src \([^[]*\)$/deb-src [arch=amd64] \1/' "$file"
+            fi
+          done
           
           # Add ARM64 sources using ports.ubuntu.com
           sudo tee /etc/apt/sources.list.d/arm64.list > /dev/null <<EOF
