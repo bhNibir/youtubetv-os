@@ -13,17 +13,35 @@ jobs:
     steps:
       - name: Set up build environment
         run: |
+          # Add ARM64 architecture
           sudo dpkg --add-architecture arm64
+          
+          # Configure sources to use ports.ubuntu.com for ARM64 packages
+          sudo tee /etc/apt/sources.list.d/arm64.list > /dev/null <<EOF
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs) main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-backports main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
+          EOF
+          
+          # Update package lists
           sudo apt-get update
+          
+          # Install build tools and cross-compilation toolchain
           sudo apt-get install -y \
             ninja-build cmake build-essential \
             g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
             qemu-user-static \
+            python3 ruby unifdef fakeroot
+          
+          # Install ARM64 development libraries
+          sudo apt-get install -y \
             libicu-dev:arm64 libharfbuzz-dev:arm64 \
             libglib2.0-dev:arm64 libgstreamer1.0-dev:arm64 \
             libgstreamer-plugins-base1.0-dev:arm64 \
             libjpeg-dev:arm64 libpng-dev:arm64 libwebp-dev:arm64 \
-            python3 ruby unifdef
+            libxml2-dev:arm64 libxslt1-dev:arm64 \
+            libsqlite3-dev:arm64 libsoup2.4-dev:arm64
 
 
       - name: Download WPEWebKit v2.48.4 source
