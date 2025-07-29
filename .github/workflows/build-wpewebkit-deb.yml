@@ -227,8 +227,8 @@ jobs:
           # Create cross-compilation configuration for Meson
           cat > cross-file.txt << 'EOF'
           [binaries]
-          c = 'ccache aarch64-linux-gnu-gcc'
-          cpp = 'ccache aarch64-linux-gnu-g++'
+          c = 'aarch64-linux-gnu-gcc'
+          cpp = 'aarch64-linux-gnu-g++'
           ar = 'aarch64-linux-gnu-ar'
           strip = 'aarch64-linux-gnu-strip'
           pkgconfig = 'aarch64-linux-gnu-pkg-config'
@@ -245,6 +245,10 @@ jobs:
           cpu = 'aarch64'
           endian = 'little'
           EOF
+          
+          # Set up ccache environment for Meson
+          export CCACHE_PREFIX=aarch64-linux-gnu-
+          export CCACHE_DIR=~/.cache/ccache
           
           meson setup .. \
             --buildtype=release \
