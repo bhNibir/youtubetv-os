@@ -32,7 +32,7 @@ jobs:
           sudo rm -rf /var/lib/apt/lists/*
           
           # Create a completely clean sources.list with direct URLs
-          sudo tee /etc/apt/sources.list >/dev/null <<EOF
+          sudo tee /etc/apt/sources.list >/dev/null <<'SOURCES_EOF'
           # AMD64 repositories (main Ubuntu archive)
           deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main restricted universe multiverse
           deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates main restricted universe multiverse
@@ -44,7 +44,7 @@ jobs:
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-backports main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
-          EOF
+          SOURCES_EOF
           
           # Force apt to use direct sources without mirrors
           echo 'Acquire::http::Pipeline-Depth "0";' | sudo tee /etc/apt/apt.conf.d/99-direct-sources
@@ -64,14 +64,14 @@ jobs:
             sudo mkdir -p /etc/apt/sources.list.d/
             
             # Use a minimal sources.list with only essential repositories
-            sudo tee /etc/apt/sources.list >/dev/null <<EOF
+            sudo tee /etc/apt/sources.list >/dev/null <<'FALLBACK_EOF'
             # AMD64 repositories (main Ubuntu archive)
             deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main
             deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main
             # ARM64 repositories (ports only)
             deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs) main
             deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main
-            EOF
+            FALLBACK_EOF
             
             sudo apt-get clean
             sudo rm -rf /var/lib/apt/lists/*
@@ -86,14 +86,14 @@ jobs:
             export APT_CONFIG_FILE=/dev/null
             
             sudo rm -f /etc/apt/sources.list
-            sudo tee /etc/apt/sources.list >/dev/null <<EOF
+            sudo tee /etc/apt/sources.list >/dev/null <<'ENV_FALLBACK_EOF'
             # AMD64 repositories (main Ubuntu archive)
             deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main restricted universe multiverse
             deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
             # ARM64 repositories (ports only)
             deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs) main restricted universe multiverse
             deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
-            EOF
+            ENV_FALLBACK_EOF
             
             sudo apt-get clean
             sudo rm -rf /var/lib/apt/lists/*
