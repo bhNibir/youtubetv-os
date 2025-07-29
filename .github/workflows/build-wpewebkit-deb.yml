@@ -18,27 +18,28 @@ jobs:
         run: |
           # Add arm64 architecture
           sudo dpkg --add-architecture arm64
-
-          # Remove every existing list that might pull wrong URIs
-          sudo rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list
+         # 1. Remove every auto-generated mirror file
           sudo rm -f /etc/apt/apt-mirrors.txt
 
-          # Create a single, arch-scoped sources.list
+          # 2. Remove every existing list
+          sudo rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list
+
+          # 3. Create a single, architecture-scoped sources.list
           sudo tee /etc/apt/sources.list >/dev/null <<EOF
-          # AMD64
+          # --- AMD64 ---
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)          main restricted universe multiverse
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates  main restricted universe multiverse
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-backports main restricted universe multiverse
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
 
-          # ARM64 (ports)
+          # --- ARM64 (ports) ---
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)          main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates  main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-backports main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
           EOF
 
-          # Refresh package lists
+          # 4. Update
           sudo apt-get update -qq
 
           # Install cross-compilation tool-chain + host tools
