@@ -12,6 +12,46 @@ jobs:
 
     steps:
       # ------------------------------------------------------------------
+      # 0. Checkout and setup cache
+      # ------------------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup cache for build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ccache
+            build-cache/
+            .ccache/
+          key: ${{ runner.os }}-build-cache-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-build-cache-
+
+      - name: Setup cache for dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/lib/aarch64-linux-gnu/libwpe*
+            /usr/include/wpe-1.0
+            /usr/lib/aarch64-linux-gnu/libWPEBackend*
+            /usr/include/wpe-fdo-1.0
+            /usr/lib/pkgconfig/wpe*
+            /usr/lib/pkgconfig/wpebackend*
+          key: ${{ runner.os }}-wpe-deps-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-wpe-deps-
+
+      - name: Setup cache for .deb packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            *.deb
+            deb-packages/
+          key: ${{ runner.os }}-deb-packages-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-deb-packages-
+      # ------------------------------------------------------------------
       # 1. Prepare the build machine
       # ------------------------------------------------------------------
       - name: Set up build environment
@@ -101,7 +141,7 @@ jobs:
             ninja-build cmake build-essential \
             g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
             qemu-user-static \
-            python3 ruby unifdef fakeroot meson bubblewrap xdg-dbus-proxy gperf
+            python3 ruby unifdef fakeroot meson bubblewrap xdg-dbus-proxy gperf ccache
 
           # Install ARM64 development libraries
           sudo apt-get install -y \
@@ -127,6 +167,13 @@ jobs:
             libwoff-dev:arm64 libavif-dev:arm64 libseccomp-dev:arm64 \
             libfontconfig1-dev:arm64
 
+          # Set up ccache for faster rebuilds
+          export CCACHE_DIR=~/.cache/ccache
+          export CCACHE_MAXSIZE=10G
+          export CCACHE_COMPRESS=1
+          export CCACHE_COMPRESSLEVEL=6
+          ccache -s
+
           # Set up pkg-config for cross-compilation
           export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
           export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
@@ -144,10 +191,16 @@ jobs:
           mv wpewebkit-2.48.4 wpewebkit
 
       # ------------------------------------------------------------------
-      # 2.5. Build WPE dependencies
+      # 2.5. Build WPE dependencies (with caching)
       # ------------------------------------------------------------------
       - name: Build WPE dependencies
         run: |
+          # Check if dependencies already exist
+          if [ -f "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" ] && [ -f "/usr/lib/aarch64-linux-gnu/libWPEBackend-fdo-1.0.so" ]; then
+            echo "WPE dependencies already installed, skipping build..."
+            exit 0
+          fi
+          
           # Build libwpe
           wget -q https://wpewebkit.org/releases/libwpe-1.16.2.tar.xz
           tar -xf libwpe-1.16.2.tar.xz
@@ -158,6 +211,8 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=/usr \
             -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
             -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -GNinja
           ninja
           sudo ninja install
@@ -172,8 +227,8 @@ jobs:
           # Create cross-compilation configuration for Meson
           cat > cross-file.txt << 'EOF'
           [binaries]
-          c = 'aarch64-linux-gnu-gcc'
-          cpp = 'aarch64-linux-gnu-g++'
+          c = 'ccache aarch64-linux-gnu-gcc'
+          cpp = 'ccache aarch64-linux-gnu-g++'
           ar = 'aarch64-linux-gnu-ar'
           strip = 'aarch64-linux-gnu-strip'
           pkgconfig = 'aarch64-linux-gnu-pkg-config'
@@ -203,10 +258,16 @@ jobs:
           sudo ldconfig
 
       # ------------------------------------------------------------------
-      # 2.6. Package and test libwpe and wpebackend-fdo
+      # 2.6. Package and test libwpe and wpebackend-fdo (with caching)
       # ------------------------------------------------------------------
       - name: Create libwpe .deb package
         run: |
+          # Check if .deb already exists
+          if [ -f "libwpe-aarch64-rpi3b-v1.16.2.deb" ]; then
+            echo "libwpe .deb already exists, skipping..."
+            exit 0
+          fi
+          
           mkdir -p libwpe-deb-root/DEBIAN
           mkdir -p libwpe-deb-root/usr/lib/aarch64-linux-gnu
           mkdir -p libwpe-deb-root/usr/include
@@ -227,6 +288,12 @@ jobs:
 
       - name: Create wpebackend-fdo .deb package
         run: |
+          # Check if .deb already exists
+          if [ -f "wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb" ]; then
+            echo "wpebackend-fdo .deb already exists, skipping..."
+            exit 0
+          fi
+          
           mkdir -p wpebackend-deb-root/DEBIAN
           mkdir -p wpebackend-deb-root/usr/lib/aarch64-linux-gnu
           mkdir -p wpebackend-deb-root/usr/include
@@ -267,11 +334,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ------------------------------------------------------------------
-      # 3. Configure & build
+      # 3. Configure & build (with caching)
       # ------------------------------------------------------------------
       - name: Configure and build WPE WebKit
         timeout-minutes: 300
         run: |
+          # Check if WPE WebKit .deb already exists
+          if [ -f "wpewebkit-aarch64-rpi3b-v2.48.4.deb" ]; then
+            echo "WPE WebKit .deb already exists, skipping build..."
+            exit 0
+          fi
+          
           mkdir -p wpewebkit/build
           cd wpewebkit/build
           
@@ -279,9 +352,10 @@ jobs:
           export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
           export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
           
-          # Set up cross-compilation environment
-          export CC=aarch64-linux-gnu-gcc
-          export CXX=aarch64-linux-gnu-g++
+          # Set up cross-compilation environment with ccache
+          export CC=ccache
+          export CXX=ccache
+          export CCACHE_PREFIX=aarch64-linux-gnu-
           export AR=aarch64-linux-gnu-ar
           export STRIP=aarch64-linux-gnu-strip
           export RANLIB=aarch64-linux-gnu-ranlib
@@ -294,6 +368,8 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=/usr \
             -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
             -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DCMAKE_PKG_CONFIG_EXECUTABLE=aarch64-linux-gnu-pkg-config \
             -DENABLE_DOCUMENTATION=OFF \
             -DENABLE_ENCRYPTED_MEDIA=ON \
@@ -313,10 +389,16 @@ jobs:
           DESTDIR=$GITHUB_WORKSPACE/deb-root ninja install
 
       # ------------------------------------------------------------------
-      # 4. Package all components
+      # 4. Package all components (with caching)
       # ------------------------------------------------------------------
       - name: Create WPE WebKit .deb package
         run: |
+          # Check if .deb already exists
+          if [ -f "wpewebkit-aarch64-rpi3b-v2.48.4.deb" ]; then
+            echo "WPE WebKit .deb already exists, skipping..."
+            exit 0
+          fi
+          
           mkdir -p deb-root/DEBIAN
           mkdir -p deb-root/usr/lib/aarch64-linux-gnu
           mkdir -p deb-root/usr/include
@@ -340,6 +422,26 @@ jobs:
           # Copy share files
           sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/share/* deb-root/usr/share/
           fakeroot dpkg-deb --build deb-root wpewebkit-aarch64-rpi3b-v2.48.4.deb
+
+      # ------------------------------------------------------------------
+      # 4.5. Cache statistics and cleanup
+      # ------------------------------------------------------------------
+      - name: Show ccache statistics
+        run: |
+          ccache -s
+          echo "Build cache statistics:"
+          du -sh ~/.cache/ccache || echo "No ccache directory found"
+
+      - name: Save build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ccache
+            build-cache/
+            .ccache/
+          key: ${{ runner.os }}-build-cache-${{ hashFiles('**/build-wpewebkit-deb.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-build-cache-
 
       # ------------------------------------------------------------------
       # 5. Store artifacts
