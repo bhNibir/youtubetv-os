@@ -174,8 +174,16 @@ install_dependencies() {
     if sudo apt-get install -y gobject-introspection:arm64; then
         print_success "gobject-introspection:arm64 installed successfully"
     else
-        print_warning "gobject-introspection:arm64 not available, will use host version"
-        # The host gobject-introspection should work for cross-compilation
+        print_warning "gobject-introspection:arm64 has dependency issues, trying to fix..."
+        # Try to install the missing dependencies
+        if sudo apt-get install -y gobject-introspection-bin:arm64 gobject-introspection-bin-linux:arm64; then
+            print_success "gobject-introspection dependencies installed"
+            # Now try gobject-introspection:arm64 again
+            sudo apt-get install -y gobject-introspection:arm64 || print_warning "gobject-introspection:arm64 still not available, will use host version"
+        else
+            print_warning "gobject-introspection:arm64 not available, will use host version"
+            # The host gobject-introspection should work for cross-compilation
+        fi
     fi
     
     # Install Python packages (with fallback if pip fails)
@@ -218,6 +226,11 @@ install_dependencies() {
         libatk-bridge2.0-dev:arm64 flite1-dev:arm64 libjxl-dev:arm64 \
         libwoff-dev:arm64 libavif-dev:arm64 libseccomp-dev:arm64 \
         libfontconfig1-dev:arm64 libcairo2-dev:arm64
+    
+    # Clean up any broken packages
+    print_status "Cleaning up package system..."
+    sudo apt-get autoremove -y || true
+    sudo apt-get autoclean || true
     
     print_success "Dependencies installed successfully"
 }
@@ -606,6 +619,8 @@ test_dependencies() {
         "libglib2.0-dev:arm64"
         "libcairo2-dev:arm64"
         "gobject-introspection:arm64"
+        "gobject-introspection-bin:arm64"
+        "gobject-introspection-bin-linux:arm64"
     )
     
     for package in "${packages[@]}"; do
@@ -628,6 +643,20 @@ test_dependencies() {
         print_success "Host GObject Introspection library exists"
     else
         print_warning "Host GObject Introspection library not found"
+    fi
+    
+    # Check if ARM64 GObject Introspection is actually working
+    print_status "Testing ARM64 GObject Introspection functionality..."
+    if [ -f "/usr/lib/aarch64-linux-gnu/libgirepository-1.0.so" ]; then
+        print_success "ARM64 GObject Introspection library exists"
+    else
+        print_warning "ARM64 GObject Introspection library not found"
+    fi
+    
+    if [ -d "/usr/lib/aarch64-linux-gnu/python3/dist-packages" ]; then
+        print_success "ARM64 Python packages directory exists"
+    else
+        print_warning "ARM64 Python packages directory not found"
     fi
     
     print_success "Dependency test completed"
