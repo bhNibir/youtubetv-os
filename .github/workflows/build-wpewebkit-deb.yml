@@ -35,21 +35,17 @@ jobs:
           UBUNTU_VERSION=$(lsb_release -cs)
           echo "Ubuntu version: $UBUNTU_VERSION"
           
-          # Create AMD64 sources.list
-          sudo tee /etc/apt/sources.list >/dev/null <<AMD64_EOF
-          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main restricted universe multiverse
-          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-updates main restricted universe multiverse
-          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-backports main restricted universe multiverse
-          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main restricted universe multiverse
-          AMD64_EOF
+          # Create AMD64 sources.list using echo
+          echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list
+          echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+          echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+          echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
           
-          # Create ARM64 sources file
-          sudo tee /etc/apt/sources.list.d/arm64.list >/dev/null <<ARM64_EOF
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-updates main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-backports main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main restricted universe multiverse
-          ARM64_EOF
+          # Create ARM64 sources file using echo
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
           
           # Force apt to use direct sources without mirrors
           echo 'Acquire::http::Pipeline-Depth "0";' | sudo tee /etc/apt/apt.conf.d/99-direct-sources
@@ -68,16 +64,12 @@ jobs:
             sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
             sudo mkdir -p /etc/apt/sources.list.d/
             
-            # Use minimal sources
-            sudo tee /etc/apt/sources.list >/dev/null <<FALLBACK_AMD64_EOF
-            deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main
-            deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main
-            FALLBACK_AMD64_EOF
+            # Use minimal sources with echo
+            echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main" | sudo tee /etc/apt/sources.list
+            echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main" | sudo tee -a /etc/apt/sources.list
             
-            sudo tee /etc/apt/sources.list.d/arm64.list >/dev/null <<FALLBACK_ARM64_EOF
-            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main
-            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main
-            FALLBACK_ARM64_EOF
+            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main" | sudo tee /etc/apt/sources.list.d/arm64.list
+            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main" | sudo tee -a /etc/apt/sources.list.d/arm64.list
             
             sudo apt-get clean
             sudo rm -rf /var/lib/apt/lists/*
@@ -93,15 +85,11 @@ jobs:
             
             sudo rm -f /etc/apt/sources.list
             sudo rm -f /etc/apt/sources.list.d/*
-            sudo tee /etc/apt/sources.list >/dev/null <<ENV_AMD64_EOF
-            deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main restricted universe multiverse
-            deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main restricted universe multiverse
-            ENV_AMD64_EOF
+            echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list
+            echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
             
-            sudo tee /etc/apt/sources.list.d/arm64.list >/dev/null <<ENV_ARM64_EOF
-            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main restricted universe multiverse
-            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main restricted universe multiverse
-            ENV_ARM64_EOF
+            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
+            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $UBUNTU_VERSION-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
             
             sudo apt-get clean
             sudo rm -rf /var/lib/apt/lists/*
