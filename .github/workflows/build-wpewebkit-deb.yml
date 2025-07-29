@@ -18,13 +18,23 @@ jobs:
         run: |
           # Add arm64 architecture
           sudo dpkg --add-architecture arm64
-          # 1. Remove every auto-generated mirror file
+          
+          # Comprehensive cleanup of mirror configurations
           sudo rm -f /etc/apt/apt-mirrors.txt
-
-          # 2. Remove every existing list
-          sudo rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list
-
-          # 3. Create a single, architecture-scoped sources.list
+          sudo rm -f /etc/apt/sources.list
+          sudo rm -f /etc/apt/sources.list.d/*.list
+          sudo rm -f /etc/apt/apt.conf.d/*mirror*
+          sudo rm -f /etc/apt/apt.conf.d/*Mirror*
+          
+          # Temporarily disable mirrors to use direct sources
+          echo 'Acquire::http::Pipeline-Depth "0";' | sudo tee /etc/apt/apt.conf.d/99-no-mirrors
+          echo 'Acquire::http::No-Cache=True;' | sudo tee -a /etc/apt/apt.conf.d/99-no-mirrors
+          
+          # Clear apt cache to ensure clean state
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          
+          # Create a single, architecture-scoped sources.list
           sudo tee /etc/apt/sources.list >/dev/null <<EOF
           # --- AMD64 ---
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)          main restricted universe multiverse
@@ -39,8 +49,28 @@ jobs:
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
           EOF
 
-          # 4. Update
+          # Update package lists
           sudo apt-get update -qq
+
+          # Fallback: If update fails, try with direct sources
+          if [ $? -ne 0 ]; then
+            echo "First apt update failed, trying fallback approach..."
+            sudo rm -f /etc/apt/sources.list
+            sudo rm -f /etc/apt/apt.conf.d/99-no-mirrors
+            sudo tee /etc/apt/sources.list >/dev/null <<EOF
+            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main restricted universe multiverse
+            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates main restricted universe multiverse
+            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-backports main restricted universe multiverse
+            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
+            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs) main restricted universe multiverse
+            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates main restricted universe multiverse
+            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-backports main restricted universe multiverse
+            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
+            EOF
+            sudo apt-get clean
+            sudo rm -rf /var/lib/apt/lists/*
+            sudo apt-get update -qq
+          fi
 
           # Install cross-compilation tool-chain + host tools
           sudo apt-get install -y \
@@ -57,6 +87,9 @@ jobs:
             libjpeg-dev:arm64 libpng-dev:arm64 libwebp-dev:arm64 \
             libxml2-dev:arm64 libxslt1-dev:arm64 \
             libsqlite3-dev:arm64 libsoup2.4-dev:arm64
+
+          # Clean up temporary apt configuration
+          sudo rm -f /etc/apt/apt.conf.d/99-no-mirrors
 
       # ------------------------------------------------------------------
       # 2. Fetch WPE WebKit source
