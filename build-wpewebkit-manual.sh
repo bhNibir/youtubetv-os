@@ -285,8 +285,10 @@ setup_build_environment() {
     export LD=aarch64-linux-gnu-ld
     export PKG_CONFIG=aarch64-linux-gnu-pkg-config
     
-    # Set up ccache for cross-compilation
-    export CCACHE_PREFIX=aarch64-linux-gnu-
+    # Set up ccache for cross-compilation (without prefix)
+    # ccache will automatically detect the compiler from CC and CXX
+    export CCACHE_CPP2=1
+    export CCACHE_SLOPPINESS=file_macro,time_macros,include_file_mtime,include_file_ctime
     
     # Verify ARM64 GObject Introspection setup
     print_status "Verifying ARM64 GObject Introspection setup..."
@@ -473,15 +475,13 @@ build_wpewebkit() {
     mkdir -p wpewebkit/build
     cd wpewebkit/build
     
-    # Configure with CMake
+    # Configure with CMake (without ccache launchers for now)
     cmake .. \
         -DPORT=WPE \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
         -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -DCMAKE_PKG_CONFIG_EXECUTABLE=aarch64-linux-gnu-pkg-config \
         -DENABLE_DOCUMENTATION=OFF \
         -DENABLE_ENCRYPTED_MEDIA=ON \
