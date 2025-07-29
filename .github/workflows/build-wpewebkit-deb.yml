@@ -111,7 +111,7 @@ jobs:
             libjpeg-dev:arm64 libpng-dev:arm64 libwebp-dev:arm64 \
             libxml2-dev:arm64 libxslt1-dev:arm64 \
             libsqlite3-dev:arm64 libsoup2.4-dev:arm64 \
-            libepoxy-dev:arm64
+            libepoxy-dev:arm64 libgcrypt20-dev:arm64
 
           # Clean up temporary apt configuration
           sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
