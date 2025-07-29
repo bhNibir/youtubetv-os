@@ -151,12 +151,28 @@ install_dependencies() {
         qemu-user-static \
         python3 ruby unifdef fakeroot meson bubblewrap xdg-dbus-proxy gperf ccache
     
-    # Install Python dependencies
-    sudo apt-get install -y python3-setuptools python3-pip python3-gi python3-gi-cairo
-    pip3 install --upgrade pip setuptools wheel pygobject
+    # Install Python dependencies and development libraries
+    sudo apt-get install -y \
+        python3-setuptools python3-pip python3-gi python3-gi-cairo \
+        python3-dev python3-venv \
+        libcairo2-dev libglib2.0-dev libgirepository1.0-dev \
+        gobject-introspection libgirepository1.0-dev
     
-    # Install GObject Introspection
-    sudo apt-get install -y gobject-introspection libgirepository1.0-dev
+    # Install Python packages (with fallback if pip fails)
+    print_status "Installing Python packages..."
+    if pip3 install --upgrade pip setuptools wheel; then
+        print_success "Python packages upgraded successfully"
+    else
+        print_warning "pip upgrade failed, continuing with system packages"
+    fi
+    
+    # Try to install pygobject via pip, but don't fail if it doesn't work
+    if pip3 install pygobject; then
+        print_success "pygobject installed via pip"
+    else
+        print_warning "pygobject pip installation failed, using system package"
+        # The system package python3-gi should be sufficient
+    fi
     
     # Install ARM64 development libraries
     print_status "Installing ARM64 development libraries..."
@@ -181,7 +197,7 @@ install_dependencies() {
         pkg-config:arm64 linux-libc-dev:arm64 libatk1.0-dev:arm64 \
         libatk-bridge2.0-dev:arm64 flite1-dev:arm64 libjxl-dev:arm64 \
         libwoff-dev:arm64 libavif-dev:arm64 libseccomp-dev:arm64 \
-        libfontconfig1-dev:arm64
+        libfontconfig1-dev:arm64 libcairo2-dev:arm64
     
     print_success "Dependencies installed successfully"
 }
