@@ -33,10 +33,13 @@ jobs:
           
           # Create a completely clean sources.list with direct URLs
           sudo tee /etc/apt/sources.list >/dev/null <<EOF
-          deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main restricted universe multiverse
-          deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates main restricted universe multiverse
-          deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-backports main restricted universe multiverse
-          deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
+          # AMD64 repositories (main Ubuntu archive)
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main restricted universe multiverse
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates main restricted universe multiverse
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-backports main restricted universe multiverse
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
+
+          # ARM64 repositories (ports only)
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs) main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-backports main restricted universe multiverse
@@ -62,8 +65,10 @@ jobs:
             
             # Use a minimal sources.list with only essential repositories
             sudo tee /etc/apt/sources.list >/dev/null <<EOF
-            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main
-            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main
+            # AMD64 repositories (main Ubuntu archive)
+            deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main
+            deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main
+            # ARM64 repositories (ports only)
             deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs) main
             deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main
             EOF
@@ -82,8 +87,10 @@ jobs:
             
             sudo rm -f /etc/apt/sources.list
             sudo tee /etc/apt/sources.list >/dev/null <<EOF
-            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main restricted universe multiverse
-            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
+            # AMD64 repositories (main Ubuntu archive)
+            deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main restricted universe multiverse
+            deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
+            # ARM64 repositories (ports only)
             deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs) main restricted universe multiverse
             deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
             EOF
