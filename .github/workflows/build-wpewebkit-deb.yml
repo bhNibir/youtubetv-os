@@ -240,6 +240,7 @@ jobs:
             -DCMAKE_SYSTEM_NAME=Linux \
             -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
             -DBWRAP_EXECUTABLE=/usr/bin/bwrap \
+            -DDBUS_PROXY_EXECUTABLE=/usr/bin/xdg-dbus-proxy \
             -GNinja
           ninja
           DESTDIR=$GITHUB_WORKSPACE/deb-root ninja install
