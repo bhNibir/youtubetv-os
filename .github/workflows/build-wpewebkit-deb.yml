@@ -214,6 +214,15 @@ jobs:
           export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
           export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
           
+          # Set up cross-compilation environment
+          export CC=aarch64-linux-gnu-gcc
+          export CXX=aarch64-linux-gnu-g++
+          export AR=aarch64-linux-gnu-ar
+          export STRIP=aarch64-linux-gnu-strip
+          export RANLIB=aarch64-linux-gnu-ranlib
+          export LD=aarch64-linux-gnu-ld
+          export PKG_CONFIG=aarch64-linux-gnu-pkg-config
+          
           cmake .. \
             -DPORT=WPE \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -227,6 +236,9 @@ jobs:
             -DENABLE_WPE_PLATFORM_DRM=ON \
             -DENABLE_WPE_PLATFORM_HEADLESS=ON \
             -DUSE_LIBBACKTRACE=OFF \
+            -DCMAKE_CROSSCOMPILING=ON \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
             -GNinja
           ninja
           DESTDIR=$GITHUB_WORKSPACE/deb-root ninja install
