@@ -208,6 +208,9 @@ jobs:
       - name: Create libwpe .deb package
         run: |
           mkdir -p libwpe-deb-root/DEBIAN
+          mkdir -p libwpe-deb-root/usr/lib/aarch64-linux-gnu
+          mkdir -p libwpe-deb-root/usr/include
+          mkdir -p libwpe-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig
           cat <<EOF > libwpe-deb-root/DEBIAN/control
           Package: libwpe-1.0
           Version: 1.16.2
@@ -225,6 +228,9 @@ jobs:
       - name: Create wpebackend-fdo .deb package
         run: |
           mkdir -p wpebackend-deb-root/DEBIAN
+          mkdir -p wpebackend-deb-root/usr/lib/aarch64-linux-gnu
+          mkdir -p wpebackend-deb-root/usr/include
+          mkdir -p wpebackend-deb-root/usr/lib/pkgconfig
           cat <<EOF > wpebackend-deb-root/DEBIAN/control
           Package: wpebackend-fdo
           Version: 1.16.0
@@ -235,8 +241,8 @@ jobs:
           Description: WPE Backend for FreeDesktop.org for Raspberry Pi 3B+
           EOF
           sudo cp -r /usr/lib/aarch64-linux-gnu/libWPEBackend* wpebackend-deb-root/usr/lib/aarch64-linux-gnu/
-          sudo cp -r /usr/include/wpebackend-fdo-1.0 wpebackend-deb-root/usr/include/
-          sudo cp -r /usr/lib/aarch64-linux-gnu/pkgconfig/wpebackend* wpebackend-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig/
+          sudo cp -r /usr/include/wpe-fdo-1.0 wpebackend-deb-root/usr/include/
+          sudo cp -r /usr/lib/pkgconfig/wpebackend-fdo-1.0.pc wpebackend-deb-root/usr/lib/pkgconfig/
           fakeroot dpkg-deb --build wpebackend-deb-root wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
 
       - name: Upload early .deb packages as artifacts
@@ -312,6 +318,10 @@ jobs:
       - name: Create WPE WebKit .deb package
         run: |
           mkdir -p deb-root/DEBIAN
+          mkdir -p deb-root/usr/lib/aarch64-linux-gnu
+          mkdir -p deb-root/usr/include
+          mkdir -p deb-root/usr/bin
+          mkdir -p deb-root/usr/share
           cat <<EOF > deb-root/DEBIAN/control
           Package: wpewebkit
           Version: 2.48.4
@@ -321,6 +331,14 @@ jobs:
           Maintainer: bhNibir <nibir@example.com>
           Description: WPE WebKit 2.48.4 built for Raspberry Pi 3B+
           EOF
+          # Copy libraries
+          sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/lib/* deb-root/usr/lib/
+          # Copy headers
+          sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/include/* deb-root/usr/include/
+          # Copy binaries
+          sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/bin/* deb-root/usr/bin/
+          # Copy share files
+          sudo cp -r $GITHUB_WORKSPACE/deb-root/usr/share/* deb-root/usr/share/
           fakeroot dpkg-deb --build deb-root wpewebkit-aarch64-rpi3b-v2.48.4.deb
 
       # ------------------------------------------------------------------
