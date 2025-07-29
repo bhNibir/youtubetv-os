@@ -111,7 +111,19 @@ jobs:
             libjpeg-dev:arm64 libpng-dev:arm64 libwebp-dev:arm64 \
             libxml2-dev:arm64 libxslt1-dev:arm64 \
             libsqlite3-dev:arm64 libsoup2.4-dev:arm64 \
-            libepoxy-dev:arm64 libgcrypt20-dev:arm64 libtasn1-6-dev:arm64
+            libepoxy-dev:arm64 libgcrypt20-dev:arm64 libtasn1-6-dev:arm64 \
+            libxkbcommon-dev:arm64 \
+            libwayland-dev:arm64 wayland-protocols \
+            libdrm-dev:arm64 libgbm-dev:arm64 \
+            libinput-dev:arm64 libudev-dev:arm64 \
+            libavcodec-dev:arm64 libavformat-dev:arm64 libavutil-dev:arm64 \
+            libgl1-mesa-dev:arm64 libegl1-mesa-dev:arm64 \
+            libsystemd-dev:arm64 libsecret-1-dev:arm64 \
+            libgirepository1.0-dev:arm64 gobject-introspection \
+            libgstreamer-plugins-bad1.0-dev:arm64 \
+            libgstreamer-plugins-good1.0-dev:arm64 \
+            libgstreamer-plugins-ugly1.0-dev:arm64 \
+            libgstreamer-libav1.0-dev:arm64
 
           # Clean up temporary apt configuration
           sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
