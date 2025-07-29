@@ -18,7 +18,7 @@ jobs:
         run: |
           # Add arm64 architecture
           sudo dpkg --add-architecture arm64
-         # 1. Remove every auto-generated mirror file
+          # 1. Remove every auto-generated mirror file
           sudo rm -f /etc/apt/apt-mirrors.txt
 
           # 2. Remove every existing list
