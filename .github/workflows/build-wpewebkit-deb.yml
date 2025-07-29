@@ -143,6 +143,10 @@ jobs:
             qemu-user-static \
             python3 ruby unifdef fakeroot meson bubblewrap xdg-dbus-proxy gperf ccache
 
+          # Install Python dependencies to fix distutils issue
+          sudo apt-get install -y python3-setuptools python3-distutils
+          pip3 install --upgrade pip setuptools wheel
+
           # Install ARM64 development libraries
           sudo apt-get install -y \
             libicu-dev:arm64 libharfbuzz-dev:arm64 \
@@ -178,6 +182,16 @@ jobs:
           export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
           export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
 
+          # Set up GObject Introspection for cross-compilation
+          export GI_SCANNER_DISABLE_CACHE=1
+          export GI_CROSS_LAUNCHER=qemu-aarch64-static
+          export GI_CROSS_COMPILER=aarch64-linux-gnu-gcc
+          export GI_CROSS_PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+
+          # Fix Python distutils issue for g-ir-scanner
+          export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
+          export GI_SCANNER_DEBUG=1
+
           # Clean up temporary apt configuration
           sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
 
@@ -195,13 +209,22 @@ jobs:
       # ------------------------------------------------------------------
       - name: Build WPE dependencies
         run: |
-          # Check if dependencies already exist
+          # Check if dependencies already exist and are valid
           if [ -f "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" ] && [ -f "/usr/lib/aarch64-linux-gnu/libWPEBackend-fdo-1.0.so" ]; then
-            echo "WPE dependencies already installed, skipping build..."
-            exit 0
+            echo "WPE dependencies already installed, checking if they are valid..."
+            # Test if the libraries are actually usable
+            if file "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" | grep -q "ARM aarch64"; then
+              echo "WPE dependencies are valid ARM64 libraries, skipping build..."
+              exit 0
+            else
+              echo "WPE dependencies exist but are not valid ARM64 libraries, rebuilding..."
+            fi
+          else
+            echo "WPE dependencies not found, building from source..."
           fi
           
           # Build libwpe
+          echo "Building libwpe..."
           wget -q https://wpewebkit.org/releases/libwpe-1.16.2.tar.xz
           tar -xf libwpe-1.16.2.tar.xz
           cd libwpe-1.16.2
@@ -219,6 +242,7 @@ jobs:
           cd ../..
           
           # Build wpebackend-fdo (uses Meson)
+          echo "Building wpebackend-fdo..."
           wget -q https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
           tar -xf wpebackend-fdo-1.16.0.tar.xz
           cd wpebackend-fdo-1.16.0
@@ -260,6 +284,18 @@ jobs:
           
           # Update library cache
           sudo ldconfig
+          
+          # Verify the libraries were built correctly
+          echo "Verifying built libraries..."
+          if [ ! -f "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" ]; then
+            echo "ERROR: libwpe library was not built successfully"
+            exit 1
+          fi
+          if [ ! -f "/usr/lib/aarch64-linux-gnu/libWPEBackend-fdo-1.0.so" ]; then
+            echo "ERROR: wpebackend-fdo library was not built successfully"
+            exit 1
+          fi
+          echo "WPE dependencies built successfully!"
 
       # ------------------------------------------------------------------
       # 2.6. Package and test libwpe and wpebackend-fdo (with caching)
@@ -270,6 +306,12 @@ jobs:
           if [ -f "libwpe-aarch64-rpi3b-v1.16.2.deb" ]; then
             echo "libwpe .deb already exists, skipping..."
             exit 0
+          fi
+          
+          # Check if libwpe files exist
+          if [ ! -f "/usr/lib/aarch64-linux-gnu/libwpe-1.0.so" ]; then
+            echo "ERROR: libwpe files not found. Please ensure libwpe was built successfully."
+            exit 1
           fi
           
           mkdir -p libwpe-deb-root/DEBIAN
@@ -296,6 +338,12 @@ jobs:
           if [ -f "wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb" ]; then
             echo "wpebackend-fdo .deb already exists, skipping..."
             exit 0
+          fi
+          
+          # Check if wpebackend-fdo files exist
+          if [ ! -f "/usr/lib/aarch64-linux-gnu/libWPEBackend-fdo-1.0.so" ]; then
+            echo "ERROR: wpebackend-fdo files not found. Please ensure wpebackend-fdo was built successfully."
+            exit 1
           fi
           
           mkdir -p wpebackend-deb-root/DEBIAN
@@ -386,6 +434,7 @@ jobs:
             -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
             -DBWRAP_EXECUTABLE=/usr/bin/bwrap \
             -DDBUS_PROXY_EXECUTABLE=/usr/bin/xdg-dbus-proxy \
+            -DENABLE_INTROSPECTION=OFF \
             -GNinja
           
           # Build with parallel jobs and memory optimization
