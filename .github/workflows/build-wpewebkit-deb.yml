@@ -176,10 +176,10 @@ jobs:
           pkgconfig = 'aarch64-linux-gnu-pkg-config'
           
           [built-in options]
-          c_args = ['--sysroot=/usr/aarch64-linux-gnu']
-          c_link_args = ['--sysroot=/usr/aarch64-linux-gnu']
-          cpp_args = ['--sysroot=/usr/aarch64-linux-gnu']
-          cpp_link_args = ['--sysroot=/usr/aarch64-linux-gnu']
+          c_args = []
+          c_link_args = []
+          cpp_args = []
+          cpp_link_args = []
           
           [host_machine]
           system = 'linux'
