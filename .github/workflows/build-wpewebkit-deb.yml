@@ -101,7 +101,7 @@ jobs:
             ninja-build cmake build-essential \
             g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
             qemu-user-static \
-            python3 ruby unifdef fakeroot meson
+            python3 ruby unifdef fakeroot meson bubblewrap
 
           # Install ARM64 development libraries
           sudo apt-get install -y \
