@@ -218,6 +218,7 @@ jobs:
             -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
             -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
             -DCMAKE_PKG_CONFIG_EXECUTABLE=aarch64-linux-gnu-pkg-config \
+            -DENABLE_DOCUMENTATION=OFF \
             -GNinja
           ninja
           DESTDIR=$GITHUB_WORKSPACE/deb-root ninja install
