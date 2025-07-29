@@ -8,41 +8,47 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Build WPEWebKit v2.48.4 from source tarball
+    name: Build WPE WebKit 2.48.4 (arm64)
 
     steps:
+      # ------------------------------------------------------------------
+      # 1. Prepare the build machine
+      # ------------------------------------------------------------------
       - name: Set up build environment
         run: |
-          # 1. Add arm64
+          # Add arm64 architecture
           sudo dpkg --add-architecture arm64
 
-          # 2. Remove every existing list that could pull in the wrong URIs
+          # Remove every existing list that might pull wrong URIs
           sudo rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list
+          sudo rm -f /etc/apt/apt-mirrors.txt
 
-          # 3. AMD64 only
-          sudo tee /etc/apt/sources.list.d/amd64.list >/dev/null <<EOF
+          # Create a single, arch-scoped sources.list
+          sudo tee /etc/apt/sources.list >/dev/null <<EOF
+          # AMD64
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)          main restricted universe multiverse
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates  main restricted universe multiverse
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-backports main restricted universe multiverse
           deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
-          EOF
 
-          # 4. ARM64 only
-          sudo tee /etc/apt/sources.list.d/arm64.list >/dev/null <<EOF
+          # ARM64 (ports)
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)          main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates  main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-backports main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
           EOF
 
-          # 5. Update & install
+          # Refresh package lists
           sudo apt-get update -qq
+
+          # Install cross-compilation tool-chain + host tools
           sudo apt-get install -y \
             ninja-build cmake build-essential \
             g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
             qemu-user-static \
             python3 ruby unifdef fakeroot
 
+          # Install ARM64 development libraries
           sudo apt-get install -y \
             libicu-dev:arm64 libharfbuzz-dev:arm64 \
             libglib2.0-dev:arm64 libgstreamer1.0-dev:arm64 \
@@ -51,13 +57,18 @@ jobs:
             libxml2-dev:arm64 libxslt1-dev:arm64 \
             libsqlite3-dev:arm64 libsoup2.4-dev:arm64
 
-
-      - name: Download WPEWebKit v2.48.4 source
+      # ------------------------------------------------------------------
+      # 2. Fetch WPE WebKit source
+      # ------------------------------------------------------------------
+      - name: Download WPE WebKit 2.48.4
         run: |
-          wget https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
+          wget -q https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
           tar -xf wpewebkit-2.48.4.tar.xz
           mv wpewebkit-2.48.4 wpewebkit
 
+      # ------------------------------------------------------------------
+      # 3. Configure & build
+      # ------------------------------------------------------------------
       - name: Configure and build WPE WebKit
         run: |
           mkdir -p wpewebkit/build
@@ -72,6 +83,9 @@ jobs:
           ninja
           DESTDIR=$GITHUB_WORKSPACE/deb-root ninja install
 
+      # ------------------------------------------------------------------
+      # 4. Package
+      # ------------------------------------------------------------------
       - name: Create .deb package
         run: |
           mkdir -p deb-root/DEBIAN
@@ -82,11 +96,13 @@ jobs:
           Priority: optional
           Architecture: arm64
           Maintainer: bhNibir <nibir@example.com>
-          Description: WPE WebKit 2.48.4 for Raspberry Pi 3B+
+          Description: WPE WebKit 2.48.4 built for Raspberry Pi 3B+
           EOF
-
           fakeroot dpkg-deb --build deb-root wpewebkit-aarch64-rpi3b-v2.48.4.deb
 
+      # ------------------------------------------------------------------
+      # 5. Release
+      # ------------------------------------------------------------------
       - name: Upload release .deb package
         uses: softprops/action-gh-release@v2
         with:
