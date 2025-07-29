@@ -158,12 +158,25 @@ install_dependencies() {
         libcairo2-dev libglib2.0-dev libgirepository1.0-dev \
         gobject-introspection libgirepository1.0-dev
     
-    # Install ARM64 GObject Introspection packages for cross-compilation
+    # Install ARM64 GObject Introspection packages for cross-compilation (with fallbacks)
     print_status "Installing ARM64 GObject Introspection packages..."
-    sudo apt-get install -y \
-        python3-gi:arm64 python3-gi-cairo:arm64 \
-        gobject-introspection:arm64 libgirepository1.0-dev:arm64 \
-        libglib2.0-dev:arm64 libcairo2-dev:arm64
+    
+    # First try to install the basic ARM64 packages
+    if sudo apt-get install -y python3-gi:arm64 python3-gi-cairo:arm64 libgirepository1.0-dev:arm64 libglib2.0-dev:arm64 libcairo2-dev:arm64; then
+        print_success "ARM64 GObject packages installed successfully"
+    else
+        print_warning "Some ARM64 GObject packages failed, trying minimal set..."
+        # Try minimal set without gobject-introspection:arm64
+        sudo apt-get install -y libgirepository1.0-dev:arm64 libglib2.0-dev:arm64 libcairo2-dev:arm64 || true
+    fi
+    
+    # Try to install gobject-introspection:arm64 separately (it might have dependency issues)
+    if sudo apt-get install -y gobject-introspection:arm64; then
+        print_success "gobject-introspection:arm64 installed successfully"
+    else
+        print_warning "gobject-introspection:arm64 not available, will use host version"
+        # The host gobject-introspection should work for cross-compilation
+    fi
     
     # Install Python packages (with fallback if pip fails)
     print_status "Installing Python packages..."
@@ -231,7 +244,15 @@ setup_build_environment() {
     export GI_CROSS_PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
     
     # Set up Python environment for cross-compilation
-    export PYTHONPATH="/usr/lib/python3/dist-packages:/usr/lib/aarch64-linux-gnu/python3/dist-packages:$PYTHONPATH"
+    # Check if ARM64 Python packages are available
+    if [ -d "/usr/lib/aarch64-linux-gnu/python3/dist-packages" ]; then
+        export PYTHONPATH="/usr/lib/python3/dist-packages:/usr/lib/aarch64-linux-gnu/python3/dist-packages:$PYTHONPATH"
+        print_success "ARM64 Python packages found"
+    else
+        export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
+        print_warning "ARM64 Python packages not found, using host packages"
+    fi
+    
     export GI_SCANNER_DEBUG=1
     export PYTHONUNBUFFERED=1
     export PYTHONDONTWRITEBYTECODE=1
@@ -253,6 +274,14 @@ setup_build_environment() {
     
     # Set up ccache for cross-compilation
     export CCACHE_PREFIX=aarch64-linux-gnu-
+    
+    # Verify ARM64 GObject Introspection setup
+    print_status "Verifying ARM64 GObject Introspection setup..."
+    if [ -f "/usr/lib/aarch64-linux-gnu/libgirepository-1.0.so" ]; then
+        print_success "ARM64 GObject Introspection library found"
+    else
+        print_warning "ARM64 GObject Introspection library not found, using host version"
+    fi
     
     print_success "Build environment configured for ARM64 cross-compilation"
 }
@@ -517,6 +546,7 @@ show_usage() {
     echo "Options:"
     echo "  --deps-only      Build only dependencies (libwpe, wpebackend-fdo)"
     echo "  --webkit-only    Build only WPE WebKit (requires dependencies)"
+    echo "  --test-deps      Test if dependencies are available"
     echo "  --clean          Clean all build artifacts and start fresh"
     echo "  --help           Show this help message"
     echo ""
@@ -524,6 +554,7 @@ show_usage() {
     echo "  $0                    # Build everything"
     echo "  $0 --deps-only        # Build only dependencies"
     echo "  $0 --webkit-only      # Build only WebKit"
+    echo "  $0 --test-deps        # Test dependency availability"
     echo "  $0 --clean            # Clean and build everything"
     echo ""
 }
@@ -555,6 +586,53 @@ clean_build() {
     print_success "Build artifacts cleaned"
 }
 
+# Function to test dependencies without installing
+test_dependencies() {
+    print_status "Testing dependency availability..."
+    
+    # Check if ARM64 architecture is added
+    if dpkg --print-foreign-architectures | grep -q arm64; then
+        print_success "ARM64 architecture is added"
+    else
+        print_warning "ARM64 architecture is not added"
+    fi
+    
+    # Test ARM64 package availability
+    print_status "Testing ARM64 package availability..."
+    
+    local packages=(
+        "python3-gi:arm64"
+        "libgirepository1.0-dev:arm64"
+        "libglib2.0-dev:arm64"
+        "libcairo2-dev:arm64"
+        "gobject-introspection:arm64"
+    )
+    
+    for package in "${packages[@]}"; do
+        if apt-cache policy "$package" | grep -q "Installed\|Candidate"; then
+            print_success "$package is available"
+        else
+            print_warning "$package is not available"
+        fi
+    done
+    
+    # Test host packages
+    print_status "Testing host package availability..."
+    if command -v g-ir-scanner >/dev/null 2>&1; then
+        print_success "g-ir-scanner is available"
+    else
+        print_warning "g-ir-scanner is not available"
+    fi
+    
+    if [ -f "/usr/lib/x86_64-linux-gnu/libgirepository-1.0.so" ]; then
+        print_success "Host GObject Introspection library exists"
+    else
+        print_warning "Host GObject Introspection library not found"
+    fi
+    
+    print_success "Dependency test completed"
+}
+
 # Main function
 main() {
     echo "=========================================="
@@ -565,7 +643,7 @@ main() {
     # Parse command line arguments
     DEPS_ONLY=false
     WEBKIT_ONLY=false
-    CLEAN_BUILD=false
+    TEST_DEPS=false
     
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -577,66 +655,59 @@ main() {
                 WEBKIT_ONLY=true
                 shift
                 ;;
-            --clean)
-                CLEAN_BUILD=true
+            --test-deps)
+                TEST_DEPS=true
                 shift
                 ;;
-            --help)
+            --clean)
+                clean_build
+                exit 0
+                ;;
+            --help|-h)
                 show_usage
                 exit 0
                 ;;
             *)
-                print_error "Unknown option: $1"
+                echo "Unknown option: $1"
                 show_usage
                 exit 1
                 ;;
         esac
     done
     
-    # Check if running as root
-    if [ "$EUID" -eq 0 ]; then
-        print_error "Please do not run this script as root"
-        exit 1
+    # Test dependencies if requested
+    if [ "$TEST_DEPS" = true ]; then
+        test_dependencies
+        exit 0
     fi
     
-    # Check disk space
-    check_disk_space
-    
-    # Clean if requested
-    if [ "$CLEAN_BUILD" = true ]; then
-        clean_build
-    fi
-    
-    # Check and fix repository configuration
-    check_repository_config
-    
-    # Install dependencies if not building WebKit only
+    # Install dependencies (unless webkit-only mode)
     if [ "$WEBKIT_ONLY" = false ]; then
+        check_repository_config
         install_dependencies
-        setup_build_environment
     fi
     
-    # Build dependencies
+    # Exit if deps-only mode
+    if [ "$DEPS_ONLY" = true ]; then
+        print_success "Dependencies installation completed"
+        exit 0
+    fi
+    
+    # Set up build environment
+    setup_build_environment
+    
+    # Build components
     if [ "$WEBKIT_ONLY" = false ]; then
         build_libwpe
         build_wpebackend_fdo
     fi
     
-    # Build WebKit
-    if [ "$DEPS_ONLY" = false ]; then
-        build_wpewebkit
-    fi
+    build_wpewebkit
     
     # Show statistics
     show_statistics
     
     print_success "Build completed successfully!"
-    echo ""
-    echo "Generated packages:"
-    ls -la *.deb 2>/dev/null || echo "No packages generated"
-    echo ""
-    echo "You can now install these packages on your Raspberry Pi:"
-    echo "  sudo dpkg -i *.deb"
 }
 
 # Run main function
