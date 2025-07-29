@@ -203,9 +203,68 @@ jobs:
           sudo ldconfig
 
       # ------------------------------------------------------------------
+      # 2.6. Package and test libwpe and wpebackend-fdo
+      # ------------------------------------------------------------------
+      - name: Create libwpe .deb package
+        run: |
+          mkdir -p libwpe-deb-root/DEBIAN
+          cat <<EOF > libwpe-deb-root/DEBIAN/control
+          Package: libwpe-1.0
+          Version: 1.16.2
+          Section: libs
+          Priority: optional
+          Architecture: arm64
+          Maintainer: bhNibir <nibir@example.com>
+          Description: WPE (WebKit Port for Embedded) library for Raspberry Pi 3B+
+          EOF
+          sudo cp -r /usr/lib/aarch64-linux-gnu/libwpe* libwpe-deb-root/usr/lib/aarch64-linux-gnu/
+          sudo cp -r /usr/include/wpe-1.0 libwpe-deb-root/usr/include/
+          sudo cp -r /usr/lib/aarch64-linux-gnu/pkgconfig/wpe* libwpe-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig/
+          fakeroot dpkg-deb --build libwpe-deb-root libwpe-aarch64-rpi3b-v1.16.2.deb
+
+      - name: Create wpebackend-fdo .deb package
+        run: |
+          mkdir -p wpebackend-deb-root/DEBIAN
+          cat <<EOF > wpebackend-deb-root/DEBIAN/control
+          Package: wpebackend-fdo
+          Version: 1.16.0
+          Section: libs
+          Priority: optional
+          Architecture: arm64
+          Maintainer: bhNibir <nibir@example.com>
+          Description: WPE Backend for FreeDesktop.org for Raspberry Pi 3B+
+          EOF
+          sudo cp -r /usr/lib/aarch64-linux-gnu/libWPEBackend* wpebackend-deb-root/usr/lib/aarch64-linux-gnu/
+          sudo cp -r /usr/include/wpebackend-fdo-1.0 wpebackend-deb-root/usr/include/
+          sudo cp -r /usr/lib/aarch64-linux-gnu/pkgconfig/wpebackend* wpebackend-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig/
+          fakeroot dpkg-deb --build wpebackend-deb-root wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
+
+      - name: Upload early .deb packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wpe-dependencies-deb-packages
+          path: |
+            libwpe-aarch64-rpi3b-v1.16.2.deb
+            wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
+          retention-days: 30
+
+      - name: Test upload early .deb packages to release
+        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        with:
+          tag_name: v1.16.2-deps
+          name: WPE Dependencies 1.16.2 (Raspberry Pi 3B+)
+          files: |
+            libwpe-aarch64-rpi3b-v1.16.2.deb
+            wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ------------------------------------------------------------------
       # 3. Configure & build
       # ------------------------------------------------------------------
       - name: Configure and build WPE WebKit
+        timeout-minutes: 300
         run: |
           mkdir -p wpewebkit/build
           cd wpewebkit/build
@@ -242,13 +301,15 @@ jobs:
             -DBWRAP_EXECUTABLE=/usr/bin/bwrap \
             -DDBUS_PROXY_EXECUTABLE=/usr/bin/xdg-dbus-proxy \
             -GNinja
-          ninja
+          
+          # Build with parallel jobs and memory optimization
+          ninja -j$(nproc) -l$(nproc)
           DESTDIR=$GITHUB_WORKSPACE/deb-root ninja install
 
       # ------------------------------------------------------------------
-      # 4. Package
+      # 4. Package all components
       # ------------------------------------------------------------------
-      - name: Create .deb package
+      - name: Create WPE WebKit .deb package
         run: |
           mkdir -p deb-root/DEBIAN
           cat <<EOF > deb-root/DEBIAN/control
@@ -263,13 +324,26 @@ jobs:
           fakeroot dpkg-deb --build deb-root wpewebkit-aarch64-rpi3b-v2.48.4.deb
 
       # ------------------------------------------------------------------
-      # 5. Release
+      # 5. Store artifacts
       # ------------------------------------------------------------------
-      - name: Upload release .deb package
+      - name: Upload .deb packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wpe-deb-packages
+          path: |
+            *.deb
+          retention-days: 30
+
+      # ------------------------------------------------------------------
+      # 6. Release (optional - will fail gracefully)
+      # ------------------------------------------------------------------
+      - name: Upload release .deb packages
         uses: softprops/action-gh-release@v2
+        continue-on-error: true
         with:
           tag_name: v2.48.4
           name: WPE WebKit 2.48.4 (Raspberry Pi 3B+)
-          files: wpewebkit-aarch64-rpi3b-v2.48.4.deb
+          files: |
+            wpewebkit-aarch64-rpi3b-v2.48.4.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
