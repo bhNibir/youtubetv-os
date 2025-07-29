@@ -101,7 +101,7 @@ jobs:
             ninja-build cmake build-essential \
             g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
             qemu-user-static \
-            python3 ruby unifdef fakeroot
+            python3 ruby unifdef fakeroot meson
 
           # Install ARM64 development libraries
           sudo apt-get install -y \
@@ -160,17 +160,15 @@ jobs:
           sudo ninja install
           cd ../..
           
-          # Build wpebackend-fdo
+          # Build wpebackend-fdo (uses Meson)
           wget -q https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
           tar -xf wpebackend-fdo-1.16.0.tar.xz
           cd wpebackend-fdo-1.16.0
           mkdir build && cd build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr \
-            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-            -GNinja
+          meson setup .. \
+            --buildtype=release \
+            --prefix=/usr \
+            --cross-file=/usr/share/meson/cross/aarch64-linux-gnu
           ninja
           sudo ninja install
           cd ../..
