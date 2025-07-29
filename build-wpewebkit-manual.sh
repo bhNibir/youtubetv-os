@@ -475,7 +475,7 @@ build_wpewebkit() {
     mkdir -p wpewebkit/build
     cd wpewebkit/build
     
-    # Configure with CMake (without ccache launchers for now)
+    # Configure with CMake (optimized for memory usage)
     cmake .. \
         -DPORT=WPE \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -494,10 +494,28 @@ build_wpewebkit() {
         -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
         -DBWRAP_EXECUTABLE=/usr/bin/bwrap \
         -DDBUS_PROXY_EXECUTABLE=/usr/bin/xdg-dbus-proxy \
+        -DCMAKE_CXX_FLAGS="-O2 -g -DNDEBUG -std=c++23 -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -ffp-contract=off -pthread -fmax-errors=20" \
+        -DCMAKE_C_FLAGS="-O2 -g -DNDEBUG -fPIC -fvisibility=hidden -fmax-errors=20" \
         -GNinja
     
-    # Build with parallel jobs and memory optimization
-    ninja -j$(($(nproc) / 2)) -l$(($(nproc) / 2))
+    # Build with reduced parallelism to avoid memory issues
+    # Use fewer parallel jobs and limit load average
+    print_status "Building WPE WebKit (this may take a long time)..."
+    
+    # Calculate safe parallelism based on available memory
+    AVAILABLE_MEMORY=$(free -m | awk 'NR==2{printf "%.0f", $7/1024}')
+    if [ "$AVAILABLE_MEMORY" -gt 8 ]; then
+        PARALLEL_JOBS=2
+        LOAD_LIMIT=2
+    else
+        PARALLEL_JOBS=1
+        LOAD_LIMIT=1
+    fi
+    
+    print_status "Using $PARALLEL_JOBS parallel jobs with load limit $LOAD_LIMIT (available memory: ${AVAILABLE_MEMORY}GB)"
+    
+    # Build with memory-optimized settings
+    ninja -j$PARALLEL_JOBS -l$LOAD_LIMIT
     
     # Install
     DESTDIR=$PWD/../deb-root ninja install
@@ -687,6 +705,47 @@ test_dependencies() {
     print_success "Dependency test completed"
 }
 
+# Function to check system resources
+check_system_resources() {
+    print_status "Checking system resources..."
+    
+    # Check available memory
+    AVAILABLE_MEMORY=$(free -m | awk 'NR==2{printf "%.0f", $7/1024}')
+    TOTAL_MEMORY=$(free -m | awk 'NR==2{printf "%.0f", $2/1024}')
+    
+    print_status "Memory: ${AVAILABLE_MEMORY}GB available out of ${TOTAL_MEMORY}GB total"
+    
+    # Check available disk space
+    AVAILABLE_DISK=$(df -BG . | awk 'NR==2{print $4}' | sed 's/G//')
+    print_status "Disk space: ${AVAILABLE_DISK}GB available"
+    
+    # Check CPU cores
+    CPU_CORES=$(nproc)
+    print_status "CPU cores: $CPU_CORES"
+    
+    # Provide recommendations
+    if [ "$AVAILABLE_MEMORY" -lt 4 ]; then
+        print_warning "Low memory detected (${AVAILABLE_MEMORY}GB). WebKit build may fail."
+        print_warning "Consider:"
+        print_warning "  - Close other applications"
+        print_warning "  - Use --webkit-only to skip dependency builds"
+        print_warning "  - Build will use single-threaded compilation"
+    elif [ "$AVAILABLE_MEMORY" -lt 8 ]; then
+        print_warning "Moderate memory (${AVAILABLE_MEMORY}GB). Build will use limited parallelism."
+    else
+        print_success "Sufficient memory (${AVAILABLE_MEMORY}GB) for WebKit build"
+    fi
+    
+    if [ "$AVAILABLE_DISK" -lt 10 ]; then
+        print_warning "Low disk space (${AVAILABLE_DISK}GB). WebKit build may fail."
+        print_warning "Consider cleaning up disk space before building."
+    else
+        print_success "Sufficient disk space (${AVAILABLE_DISK}GB) for WebKit build"
+    fi
+    
+    echo ""
+}
+
 # Main function
 main() {
     echo "=========================================="
@@ -733,6 +792,11 @@ main() {
     if [ "$TEST_DEPS" = true ]; then
         test_dependencies
         exit 0
+    fi
+    
+    # Check system resources before building WebKit
+    if [ "$WEBKIT_ONLY" = false ] && [ "$DEPS_ONLY" = false ]; then
+        check_system_resources
     fi
     
     # Install dependencies (unless webkit-only mode)
