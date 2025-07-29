@@ -19,54 +19,75 @@ jobs:
           # Add arm64 architecture
           sudo dpkg --add-architecture arm64
           
-          # Comprehensive cleanup of mirror configurations
-          sudo rm -f /etc/apt/apt-mirrors.txt
+          # Completely reset apt configuration to bypass mirror system
+          sudo rm -rf /etc/apt/sources.list.d/
+          sudo mkdir -p /etc/apt/sources.list.d/
           sudo rm -f /etc/apt/sources.list
-          sudo rm -f /etc/apt/sources.list.d/*.list
+          sudo rm -f /etc/apt/apt-mirrors.txt
           sudo rm -f /etc/apt/apt.conf.d/*mirror*
           sudo rm -f /etc/apt/apt.conf.d/*Mirror*
           
-          # Temporarily disable mirrors to use direct sources
-          echo 'Acquire::http::Pipeline-Depth "0";' | sudo tee /etc/apt/apt.conf.d/99-no-mirrors
-          echo 'Acquire::http::No-Cache=True;' | sudo tee -a /etc/apt/apt.conf.d/99-no-mirrors
-          
-          # Clear apt cache to ensure clean state
+          # Clear all apt caches and lists
           sudo apt-get clean
           sudo rm -rf /var/lib/apt/lists/*
           
-          # Create a single, architecture-scoped sources.list
+          # Create a completely clean sources.list with direct URLs
           sudo tee /etc/apt/sources.list >/dev/null <<EOF
-          # --- AMD64 ---
-          deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)          main restricted universe multiverse
-          deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates  main restricted universe multiverse
-          deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-backports main restricted universe multiverse
-          deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
-
-          # --- ARM64 (ports) ---
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)          main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates  main restricted universe multiverse
+          deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main restricted universe multiverse
+          deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates main restricted universe multiverse
+          deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-backports main restricted universe multiverse
+          deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs) main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-backports main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
           EOF
-
+          
+          # Force apt to use direct sources without mirrors
+          echo 'Acquire::http::Pipeline-Depth "0";' | sudo tee /etc/apt/apt.conf.d/99-direct-sources
+          echo 'Acquire::http::No-Cache=True;' | sudo tee -a /etc/apt/apt.conf.d/99-direct-sources
+          echo 'APT::Get::AllowUnauthenticated "false";' | sudo tee -a /etc/apt/apt.conf.d/99-direct-sources
+          
           # Update package lists
           sudo apt-get update -qq
 
-          # Fallback: If update fails, try with direct sources
+          # Fallback: If update fails, try with different approach
           if [ $? -ne 0 ]; then
-            echo "First apt update failed, trying fallback approach..."
+            echo "First apt update failed, trying alternative approach..."
+            # Remove all apt configuration and start fresh
             sudo rm -f /etc/apt/sources.list
-            sudo rm -f /etc/apt/apt.conf.d/99-no-mirrors
+            sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
+            sudo rm -rf /etc/apt/sources.list.d/
+            sudo mkdir -p /etc/apt/sources.list.d/
+            
+            # Use a minimal sources.list with only essential repositories
+            sudo tee /etc/apt/sources.list >/dev/null <<EOF
+            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main
+            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main
+            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs) main
+            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main
+            EOF
+            
+            sudo apt-get clean
+            sudo rm -rf /var/lib/apt/lists/*
+            sudo apt-get update -qq
+          fi
+          
+          # Third fallback: If still failing, try with environment variables
+          if [ $? -ne 0 ]; then
+            echo "Second approach also failed, trying with environment variables..."
+            # Set environment variables to bypass mirror system
+            export APT_CONFIG=/dev/null
+            export APT_CONFIG_FILE=/dev/null
+            
+            sudo rm -f /etc/apt/sources.list
             sudo tee /etc/apt/sources.list >/dev/null <<EOF
             deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs) main restricted universe multiverse
-            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-updates main restricted universe multiverse
-            deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-backports main restricted universe multiverse
             deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -cs)-security main restricted universe multiverse
             deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs) main restricted universe multiverse
-            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-updates main restricted universe multiverse
-            deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-backports main restricted universe multiverse
             deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -cs)-security main restricted universe multiverse
             EOF
+            
             sudo apt-get clean
             sudo rm -rf /var/lib/apt/lists/*
             sudo apt-get update -qq
@@ -89,7 +110,7 @@ jobs:
             libsqlite3-dev:arm64 libsoup2.4-dev:arm64
 
           # Clean up temporary apt configuration
-          sudo rm -f /etc/apt/apt.conf.d/99-no-mirrors
+          sudo rm -f /etc/apt/apt.conf.d/99-direct-sources
 
       # ------------------------------------------------------------------
       # 2. Fetch WPE WebKit source
