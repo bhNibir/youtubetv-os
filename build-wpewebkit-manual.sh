@@ -48,6 +48,32 @@ check_disk_space() {
     fi
 }
 
+# Function to check and fix repository configuration
+check_repository_config() {
+    print_status "Checking repository configuration..."
+    
+    # Get Ubuntu version
+    UBUNTU_VERSION=$(lsb_release -cs)
+    
+    # Check if we're on Ubuntu 24.04 (Noble)
+    if [ "$UBUNTU_VERSION" = "noble" ]; then
+        print_status "Ubuntu 24.04 detected - configuring ARM64 repositories..."
+        
+        # Remove any existing ARM64 sources that might be incorrect
+        sudo rm -f /etc/apt/sources.list.d/arm64.list
+        
+        # Create proper ARM64 sources for Ubuntu 24.04
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+        
+        print_success "ARM64 repositories configured for Ubuntu 24.04"
+    else
+        print_status "Using standard ARM64 repositories for Ubuntu $UBUNTU_VERSION"
+    fi
+}
+
 # Function to install dependencies
 install_dependencies() {
     print_status "Installing dependencies..."
@@ -73,6 +99,7 @@ install_dependencies() {
     sudo apt-get install -y gobject-introspection libgirepository1.0-dev
     
     # Install ARM64 development libraries
+    print_status "Installing ARM64 development libraries..."
     sudo apt-get install -y \
         libicu-dev:arm64 libharfbuzz-dev:arm64 \
         libglib2.0-dev:arm64 libgstreamer1.0-dev:arm64 \
@@ -479,6 +506,9 @@ main() {
     if [ "$CLEAN_BUILD" = true ]; then
         clean_build
     fi
+    
+    # Check and fix repository configuration
+    check_repository_config
     
     # Install dependencies if not building WebKit only
     if [ "$WEBKIT_ONLY" = false ]; then
