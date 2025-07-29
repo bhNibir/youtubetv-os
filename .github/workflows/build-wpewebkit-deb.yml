@@ -186,6 +186,14 @@ jobs:
           export CCACHE_COMPRESS=1
           export CCACHE_COMPRESSLEVEL=6
           ccache -s
+          
+          # Verify ccache is working with cross-compilation
+          echo "Testing ccache with cross-compilation..."
+          ccache aarch64-linux-gnu-gcc --version
+          if [ $? -ne 0 ]; then
+            echo "ERROR: ccache is not working with cross-compilation"
+            exit 1
+          fi
 
           # Set up pkg-config for cross-compilation
           export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
@@ -290,7 +298,6 @@ jobs:
           EOF
           
           # Set up ccache environment for Meson
-          export CCACHE_PREFIX=aarch64-linux-gnu-
           export CCACHE_DIR=~/.cache/ccache
           
           meson setup .. \
@@ -426,7 +433,6 @@ jobs:
           # Set up cross-compilation environment with ccache
           export CC=ccache
           export CXX=ccache
-          export CCACHE_PREFIX=aarch64-linux-gnu-
           export AR=aarch64-linux-gnu-ar
           export STRIP=aarch64-linux-gnu-strip
           export RANLIB=aarch64-linux-gnu-ranlib
