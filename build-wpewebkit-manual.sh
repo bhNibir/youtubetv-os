@@ -305,9 +305,10 @@ setup_build_environment() {
 build_libwpe() {
     print_status "Building libwpe..."
     
-    if [ -f "libwpe-aarch64-rpi3b-v1.16.2.deb" ]; then
-        print_warning "libwpe .deb already exists, skipping build..."
-        return 0
+    # Clean up any existing libwpe directory
+    if [ -d "libwpe-1.16.2" ]; then
+        print_status "Cleaning up existing libwpe directory..."
+        rm -rf libwpe-1.16.2
     fi
     
     # Download and extract libwpe
@@ -378,6 +379,12 @@ EOF
 # Function to build wpebackend-fdo
 build_wpebackend_fdo() {
     print_status "Building wpebackend-fdo..."
+    
+    # Clean up any existing wpebackend-fdo directory
+    if [ -d "wpebackend-fdo-1.16.0" ]; then
+        print_status "Cleaning up existing wpebackend-fdo directory..."
+        rm -rf wpebackend-fdo-1.16.0
+    fi
     
     # Download and extract wpebackend-fdo
     wget -q https://wpewebkit.org/releases/wpebackend-fdo-1.16.0.tar.xz
@@ -465,6 +472,12 @@ EOF
 # Function to build WPE WebKit
 build_wpewebkit() {
     print_status "Building WPE WebKit..."
+    
+    # Clean up any existing wpewebkit directory
+    if [ -d "wpewebkit" ]; then
+        print_status "Cleaning up existing wpewebkit directory..."
+        rm -rf wpewebkit
+    fi
     
     # Download and extract WPE WebKit
     wget -q https://wpewebkit.org/releases/wpewebkit-2.48.4.tar.xz
