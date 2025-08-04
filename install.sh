@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # YouTube TV Kiosk Installer for Raspberry Pi OS Lite (Bookworm 64-bit)
+# Fixed version with proper audio and D-Bus configuration
 set -euo pipefail
 [[ $EUID -eq 0 ]] && { echo "Run as a regular user, not root."; exit 1; }
 
 CURRENT_USER=$(whoami)
+USER_ID=$(id -u)
 
 echo ">>> Updating system..."
 sudo apt update && sudo apt full-upgrade -y
@@ -14,11 +16,30 @@ sudo apt install -y \
   libwpewebkit-2.0-1 \
   libwpebackend-fdo-1.0-1 \
   libwpe-1.0-1 \
+  libgles2 \
   gstreamer1.0-wpe \
   gstreamer1.0-libav \
   gstreamer1.0-plugins-good \
   gstreamer1.0-plugins-bad \
-  gstreamer1.0-plugins-ugly
+  gstreamer1.0-plugins-ugly \
+  pipewire \
+  pipewire-alsa \
+  pipewire-pulse \
+  wireplumber \
+  dbus-x11
+
+echo ">>> Adding user to audio group..."
+sudo usermod -a -G audio "$CURRENT_USER"
+
+echo ">>> Configuring PipeWire..."
+# Create user PipeWire config directory
+mkdir -p ~/.config/pipewire
+if [ -f /usr/share/pipewire/pipewire.conf ]; then
+  cp /usr/share/pipewire/pipewire.conf ~/.config/pipewire/
+fi
+
+# Enable PipeWire services for user
+systemctl --user enable pipewire pipewire-pulse wireplumber || true
 
 echo ">>> Patching boot config (config.txt)..."
 CONFIG_FILE="/boot/firmware/config.txt"
@@ -29,18 +50,10 @@ if ! grep -q "^gpu_mem=" "$CONFIG_FILE"; then
   echo "gpu_mem=256" | sudo tee -a "$CONFIG_FILE" >/dev/null
 fi
 
-# Add performance settings if not already there
-# if ! grep -q "^# --- YouTube TV kiosk ---" "$CONFIG_FILE"; then
-#   sudo tee -a "$CONFIG_FILE" >/dev/null <<'EOF'
-
-# # --- YouTube TV kiosk ---
-# # Optional power optimization
-# arm_freq=1200
-# over_voltage=2
-# temp_limit=75
-# force_turbo=0
-# EOF
-# fi
+# Add audio configuration
+if ! grep -q "dtparam=audio=on" "$CONFIG_FILE"; then
+  echo "dtparam=audio=on" | sudo tee -a "$CONFIG_FILE" >/dev/null
+fi
 
 echo ">>> Configuring cmdline.txt..."
 CMDLINE_FILE="/boot/firmware/cmdline.txt"
@@ -51,13 +64,12 @@ if ! grep -q "quiet loglevel=3" "$CMDLINE_FILE"; then
   sudo sed -i '1s/$/ quiet loglevel=3 logo.nologo vt.global_cursor_default=0/' "$CMDLINE_FILE"
 fi
 
-# Optional: boot to CLI only
-# sudo systemctl set-default multi-user.target
-
 echo ">>> Creating kiosk launch script..."
 sudo tee /usr/local/bin/youtube-kiosk.sh >/dev/null <<'EOF'
 #!/bin/bash
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
+export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+export PULSE_RUNTIME_PATH="${XDG_RUNTIME_DIR}/pulse"
 LOGFILE="/var/log/youtube-kiosk.log"
 
 # Create log file
@@ -67,14 +79,54 @@ if [ ! -f "$LOGFILE" ]; then
 fi
 
 echo "[INFO] Kiosk script started at $(date)" >> "$LOGFILE"
+echo "[INFO] User: $(whoami), UID: $(id -u)" >> "$LOGFILE"
+echo "[INFO] XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR" >> "$LOGFILE"
+
+# Ensure XDG_RUNTIME_DIR exists with correct permissions
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+
+# Start D-Bus session if not running
+if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] || ! dbus-send --session --dest=org.freedesktop.DBus --type=method_call --print-reply /org/freedesktop/DBus org.freedesktop.DBus.GetId &>/dev/null; then
+    echo "[INFO] Starting D-Bus session..." >> "$LOGFILE"
+    eval $(dbus-launch --sh-syntax)
+    export DBUS_SESSION_BUS_ADDRESS
+    echo "[INFO] D-Bus session started: $DBUS_SESSION_BUS_ADDRESS" >> "$LOGFILE"
+fi
+
+# Start PipeWire if not running
+if ! pgrep -x "pipewire" > /dev/null; then
+    echo "[INFO] Starting PipeWire..." >> "$LOGFILE"
+    pipewire &
+    sleep 2
+fi
+
+if ! pgrep -x "wireplumber" > /dev/null; then
+    echo "[INFO] Starting WirePlumber..." >> "$LOGFILE"
+    wireplumber &
+    sleep 2
+fi
+
+if ! pgrep -x "pipewire-pulse" > /dev/null; then
+    echo "[INFO] Starting PipeWire PulseAudio..." >> "$LOGFILE"
+    pipewire-pulse &
+    sleep 2
+fi
 
 # Wait for network
+echo "[INFO] Waiting for network..." >> "$LOGFILE"
 until ping -c 1 -W 2 8.8.8.8 &>/dev/null; do
-  echo "[WARN] Waiting for network..." >> "$LOGFILE"
+  echo "[WARN] Still waiting for network..." >> "$LOGFILE"
   sleep 2
 done
 
-sleep 1
+echo "[INFO] Network is ready" >> "$LOGFILE"
+sleep 3
+
+# Set audio device (optional - uncomment if needed)
+# export ALSA_CARD=0
+
+echo "[INFO] Starting Cog browser..." >> "$LOGFILE"
 
 # Launch cog using drm
 exec /usr/bin/cog \
@@ -84,31 +136,38 @@ exec /usr/bin/cog \
   --enable-javascript \
   --enable-spatial-navigation=true \
   --user-agent="Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/537.36" \
-  https://www.youtube.com/tv
+  https://www.youtube.com/tv 2>>"$LOGFILE"
 EOF
+
 sudo chmod +x /usr/local/bin/youtube-kiosk.sh
 
 echo ">>> Creating systemd service..."
 sudo tee /etc/systemd/system/youtube-kiosk.service >/dev/null <<EOF
 [Unit]
 Description=YouTube TV Kiosk (Cog Browser with WPE)
-After=network-online.target
+After=network-online.target sound.target multi-user.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=$CURRENT_USER
-Environment="XDG_RUNTIME_DIR=/run/user/$(id -u $CURRENT_USER)"
+Group=audio
+Environment="XDG_RUNTIME_DIR=/run/user/$USER_ID"
+Environment="HOME=/home/$CURRENT_USER"
+Environment="USER=$CURRENT_USER"
+RuntimeDirectory=user-$USER_ID
+RuntimeDirectoryMode=0700
+ExecStartPre=/bin/chown $CURRENT_USER:$CURRENT_USER /run/user/$USER_ID
 ExecStart=/usr/local/bin/youtube-kiosk.sh
 Restart=always
-RestartSec=3
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=60
 
 [Install]
 WantedBy=multi-user.target
 EOF
-
-sudo systemctl daemon-reexec
-sudo systemctl enable youtube-kiosk.service
 
 echo ">>> Configuring auto-login on tty1..."
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
@@ -118,8 +177,39 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin $CURRENT_USER --noclear %I \$TERM
 EOF
 
+echo ">>> Enabling services..."
 sudo systemctl daemon-reload
+sudo systemctl enable youtube-kiosk.service
 
-echo ">>> Done! Rebooting..."
-sleep 3
-sudo reboot
+# Create log file with proper permissions
+sudo touch /var/log/youtube-kiosk.log
+sudo chown "$CURRENT_USER:$CURRENT_USER" /var/log/youtube-kiosk.log
+
+echo ">>> Installation complete!"
+echo ""
+echo "What was fixed:"
+echo "  ✓ Added PipeWire audio system configuration"
+echo "  ✓ Fixed D-Bus session management"
+echo "  ✓ Added proper runtime directory handling"
+echo "  ✓ Improved error logging"
+echo "  ✓ Added audio group membership"
+echo "  ✓ Enhanced service dependencies"
+echo ""
+echo "To apply changes:"
+echo "  sudo reboot"
+echo ""
+echo "To monitor the service after reboot:"
+echo "  journalctl -u youtube-kiosk.service -f"
+echo "  tail -f /var/log/youtube-kiosk.log"
+echo ""
+echo "To test manually (after reboot):"
+echo "  sudo systemctl stop youtube-kiosk.service"
+echo "  /usr/local/bin/youtube-kiosk.sh"
+
+read -p "Reboot now? (y/N): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Rebooting in 3 seconds..."
+    sleep 3
+    sudo reboot
+fi
