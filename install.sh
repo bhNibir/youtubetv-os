@@ -91,8 +91,8 @@ sudo tee /usr/local/bin/youtube-kiosk.sh >/dev/null <<'EOF'
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
 export PULSE_RUNTIME_PATH="${XDG_RUNTIME_DIR}/pulse"
-export WPE_BCMRPI_CURSOR=0
-export WPE_BCMRPI_TOUCH=0
+export WPE_BCMRPI_CURSOR=1
+export WPE_BCMRPI_TOUCH=1
 LOGFILE="/var/log/youtube-kiosk.log"
 
 # Create log file
@@ -152,7 +152,7 @@ echo "[INFO] Framebuffer info: $FB_INFO" >> "$LOGFILE"
 
 echo "[INFO] Starting Cog browser for 1280x1024 display..." >> "$LOGFILE"
 
-# Launch cog using drm with geometry optimization
+# Launch cog using drm with mouse and cursor support
 exec /usr/bin/cog \
   -P drm \
   --enable-media \
@@ -160,6 +160,7 @@ exec /usr/bin/cog \
   --enable-javascript \
   --enable-spatial-navigation=true \
   --disable-web-security \
+  --enable-mouse-cursor \
   --user-agent="Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/537.36" \
   https://www.youtube.com/tv 2>>"$LOGFILE"
 EOF
