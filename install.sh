@@ -240,7 +240,8 @@ echo "  fbset -s"
 echo ""
 
 read -p "Reboot now to apply 1280x1024 resolution? (y/N): " -n 1 -r
-echo ""
+
+echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Rebooting in 3 seconds..."
     sleep 3
