@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # YouTube TV Kiosk Installer for Raspberry Pi OS Lite (Bookworm 64-bit)
-# Fixed version with proper audio and D-Bus configuration
+# Optimized for 1280x1024 resolution with DRM framebuffer
 set -euo pipefail
 [[ $EUID -eq 0 ]] && { echo "Run as a regular user, not root."; exit 1; }
 
@@ -45,6 +45,15 @@ echo ">>> Patching boot config (config.txt)..."
 CONFIG_FILE="/boot/firmware/config.txt"
 [ ! -f "$CONFIG_FILE" ] && CONFIG_FILE="/boot/config.txt"
 
+# Remove any existing display settings to avoid conflicts
+sudo sed -i '/# Display Configuration/,/^$/d' "$CONFIG_FILE"
+sudo sed -i '/hdmi_group=/d' "$CONFIG_FILE"
+sudo sed -i '/hdmi_mode=/d' "$CONFIG_FILE" 
+sudo sed -i '/framebuffer_width=/d' "$CONFIG_FILE"
+sudo sed -i '/framebuffer_height=/d' "$CONFIG_FILE"
+sudo sed -i '/hdmi_force_hotplug=/d' "$CONFIG_FILE"
+sudo sed -i '/disable_overscan=/d' "$CONFIG_FILE"
+
 # Add gpu_mem if missing
 if ! grep -q "^gpu_mem=" "$CONFIG_FILE"; then
   echo "gpu_mem=256" | sudo tee -a "$CONFIG_FILE" >/dev/null
@@ -54,6 +63,18 @@ fi
 if ! grep -q "dtparam=audio=on" "$CONFIG_FILE"; then
   echo "dtparam=audio=on" | sudo tee -a "$CONFIG_FILE" >/dev/null
 fi
+
+# Add 1280x1024 display configuration
+sudo tee -a "$CONFIG_FILE" >/dev/null <<'EOF'
+
+# Display Configuration for 1280x1024
+hdmi_force_hotplug=1
+disable_overscan=1
+hdmi_group=2
+hdmi_mode=35
+framebuffer_width=1280
+framebuffer_height=1024
+EOF
 
 echo ">>> Configuring cmdline.txt..."
 CMDLINE_FILE="/boot/firmware/cmdline.txt"
@@ -70,6 +91,8 @@ sudo tee /usr/local/bin/youtube-kiosk.sh >/dev/null <<'EOF'
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
 export PULSE_RUNTIME_PATH="${XDG_RUNTIME_DIR}/pulse"
+export WPE_BCMRPI_CURSOR=0
+export WPE_BCMRPI_TOUCH=0
 LOGFILE="/var/log/youtube-kiosk.log"
 
 # Create log file
@@ -123,18 +146,20 @@ done
 echo "[INFO] Network is ready" >> "$LOGFILE"
 sleep 3
 
-# Set audio device (optional - uncomment if needed)
-# export ALSA_CARD=0
+# Check framebuffer resolution
+FB_INFO=$(fbset -s 2>/dev/null || echo "Could not get framebuffer info")
+echo "[INFO] Framebuffer info: $FB_INFO" >> "$LOGFILE"
 
-echo "[INFO] Starting Cog browser..." >> "$LOGFILE"
+echo "[INFO] Starting Cog browser for 1280x1024 display..." >> "$LOGFILE"
 
-# Launch cog using drm
+# Launch cog using drm with geometry optimization
 exec /usr/bin/cog \
   -P drm \
   --enable-media \
   --enable-fullscreen \
   --enable-javascript \
   --enable-spatial-navigation=true \
+  --disable-web-security \
   --user-agent="Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/537.36" \
   https://www.youtube.com/tv 2>>"$LOGFILE"
 EOF
@@ -144,7 +169,7 @@ sudo chmod +x /usr/local/bin/youtube-kiosk.sh
 echo ">>> Creating systemd service..."
 sudo tee /etc/systemd/system/youtube-kiosk.service >/dev/null <<EOF
 [Unit]
-Description=YouTube TV Kiosk (Cog Browser with WPE)
+Description=YouTube TV Kiosk (Cog Browser with WPE) - 1280x1024
 After=network-online.target sound.target multi-user.target
 Wants=network-online.target
 
@@ -187,26 +212,33 @@ sudo chown "$CURRENT_USER:$CURRENT_USER" /var/log/youtube-kiosk.log
 
 echo ">>> Installation complete!"
 echo ""
-echo "What was fixed:"
-echo "  ✓ Added PipeWire audio system configuration"
-echo "  ✓ Fixed D-Bus session management"
-echo "  ✓ Added proper runtime directory handling"
-echo "  ✓ Improved error logging"
-echo "  ✓ Added audio group membership"
-echo "  ✓ Enhanced service dependencies"
+echo "Display Configuration Applied:"
+echo "  ✓ Resolution: 1280x1024 (hdmi_mode=35)"
+echo "  ✓ DRM framebuffer optimized"
+echo "  ✓ Overscan disabled"
+echo "  ✓ HDMI hotplug forced"
+echo ""
+echo "Audio & System Fixes:"
+echo "  ✓ PipeWire audio system configured"
+echo "  ✓ D-Bus session management fixed"
+echo "  ✓ Runtime directory handling improved"
+echo "  ✓ Enhanced error logging added"
+echo "  ✓ Audio group membership configured"
+echo ""
+echo "After reboot, the green box should be gone!"
 echo ""
 echo "To apply changes:"
 echo "  sudo reboot"
 echo ""
-echo "To monitor the service after reboot:"
+echo "To monitor after reboot:"
 echo "  journalctl -u youtube-kiosk.service -f"
 echo "  tail -f /var/log/youtube-kiosk.log"
 echo ""
-echo "To test manually (after reboot):"
-echo "  sudo systemctl stop youtube-kiosk.service"
-echo "  /usr/local/bin/youtube-kiosk.sh"
+echo "To verify framebuffer resolution:"
+echo "  fbset -s"
+echo ""
 
-read -p "Reboot now? (y/N): " -n 1 -r
+read -p "Reboot now to apply 1280x1024 resolution? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Rebooting in 3 seconds..."
