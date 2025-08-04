@@ -30,17 +30,17 @@ if ! grep -q "^gpu_mem=" "$CONFIG_FILE"; then
 fi
 
 # Add performance settings if not already there
-if ! grep -q "^# --- YouTube TV kiosk ---" "$CONFIG_FILE"; then
-  sudo tee -a "$CONFIG_FILE" >/dev/null <<'EOF'
+# if ! grep -q "^# --- YouTube TV kiosk ---" "$CONFIG_FILE"; then
+#   sudo tee -a "$CONFIG_FILE" >/dev/null <<'EOF'
 
-# --- YouTube TV kiosk ---
-# Optional power optimization
-arm_freq=1200
-over_voltage=2
-temp_limit=75
-force_turbo=0
-EOF
-fi
+# # --- YouTube TV kiosk ---
+# # Optional power optimization
+# arm_freq=1200
+# over_voltage=2
+# temp_limit=75
+# force_turbo=0
+# EOF
+# fi
 
 echo ">>> Configuring cmdline.txt..."
 CMDLINE_FILE="/boot/firmware/cmdline.txt"
