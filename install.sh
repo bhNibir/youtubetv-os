@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Updated YouTube TV Kiosk Installer – Raspberry Pi OS Lite Bookworm 64-bit
+# YouTube TV Kiosk Installer for Raspberry Pi OS Lite (Bookworm 64-bit)
 set -euo pipefail
 [[ $EUID -eq 0 ]] && { echo "Run as a regular user, not root."; exit 1; }
 
@@ -20,21 +20,21 @@ sudo apt install -y \
   gstreamer1.0-plugins-bad \
   gstreamer1.0-plugins-ugly
 
-echo ">>> Configuring boot config..."
+echo ">>> Patching boot config (config.txt)..."
 CONFIG_FILE="/boot/firmware/config.txt"
 [ ! -f "$CONFIG_FILE" ] && CONFIG_FILE="/boot/config.txt"
 
-if ! grep -q "^dtoverlay=vc4-kms-v3d" "$CONFIG_FILE"; then
+# Add gpu_mem if missing
+if ! grep -q "^gpu_mem=" "$CONFIG_FILE"; then
+  echo "gpu_mem=256" | sudo tee -a "$CONFIG_FILE" >/dev/null
+fi
+
+# Add performance settings if not already there
+if ! grep -q "^# --- YouTube TV kiosk ---" "$CONFIG_FILE"; then
   sudo tee -a "$CONFIG_FILE" >/dev/null <<'EOF'
 
 # --- YouTube TV kiosk ---
-dtoverlay=vc4-kms-v3d
-disable_overscan=1
-max_framebuffers=2
-disable_splash=1
-gpu_mem=256
-
-# Optional performance tuning
+# Optional power optimization
 arm_freq=1200
 over_voltage=2
 temp_limit=75
@@ -46,18 +46,21 @@ echo ">>> Configuring cmdline.txt..."
 CMDLINE_FILE="/boot/firmware/cmdline.txt"
 [ ! -f "$CMDLINE_FILE" ] && CMDLINE_FILE="/boot/cmdline.txt"
 
-sudo sed -i '1s/$/ quiet loglevel=3 logo.nologo vt.global_cursor_default=0/' "$CMDLINE_FILE"
+# Add silent boot flags if not already present
+if ! grep -q "quiet loglevel=3" "$CMDLINE_FILE"; then
+  sudo sed -i '1s/$/ quiet loglevel=3 logo.nologo vt.global_cursor_default=0/' "$CMDLINE_FILE"
+fi
 
-# Optional: boot to CLI
+# Optional: boot to CLI only
 # sudo systemctl set-default multi-user.target
 
-echo ">>> Creating kiosk script..."
+echo ">>> Creating kiosk launch script..."
 sudo tee /usr/local/bin/youtube-kiosk.sh >/dev/null <<'EOF'
 #!/bin/bash
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 LOGFILE="/var/log/youtube-kiosk.log"
 
-# Create log if missing
+# Create log file
 if [ ! -f "$LOGFILE" ]; then
   sudo touch "$LOGFILE"
   sudo chown $(id -u):$(id -g) "$LOGFILE"
@@ -86,9 +89,9 @@ EOF
 sudo chmod +x /usr/local/bin/youtube-kiosk.sh
 
 echo ">>> Creating systemd service..."
-cat <<EOF | sudo tee /etc/systemd/system/youtube-kiosk.service >/dev/null
+sudo tee /etc/systemd/system/youtube-kiosk.service >/dev/null <<EOF
 [Unit]
-Description=YouTube TV kiosk (WPE WebKit)
+Description=YouTube TV Kiosk (Cog Browser with WPE)
 After=network-online.target
 Wants=network-online.target
 
@@ -107,7 +110,7 @@ EOF
 sudo systemctl daemon-reexec
 sudo systemctl enable youtube-kiosk.service
 
-echo ">>> Configuring auto-login for user: $CURRENT_USER..."
+echo ">>> Configuring auto-login on tty1..."
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
 sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf >/dev/null <<EOF
 [Service]
