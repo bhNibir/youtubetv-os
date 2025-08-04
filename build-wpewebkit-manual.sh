@@ -301,6 +301,100 @@ setup_build_environment() {
     print_success "Build environment configured for ARM64 cross-compilation"
 }
 
+# Function to create proper deb package directory structure
+create_deb_structure() {
+    local package_root="$1"
+    local package_name="$2"
+    local version="$3"
+    local description="$4"
+    
+    print_status "Creating proper .deb package structure for $package_name..."
+    
+    # Remove existing directory if it exists
+    if [ -d "$package_root" ]; then
+        rm -rf "$package_root"
+    fi
+    
+    # Create package structure with explicit permissions
+    mkdir -p "$package_root"
+    chmod 755 "$package_root"
+    
+    mkdir -p "$package_root/DEBIAN"
+    chmod 755 "$package_root/DEBIAN"
+    
+    # Create control file
+    cat <<EOF > "$package_root/DEBIAN/control"
+Package: $package_name
+Version: $version
+Section: libs
+Priority: optional
+Architecture: arm64
+Maintainer: bhNibir <nibir@example.com>
+Description: $description
+EOF
+    
+    # Set correct permissions for control file
+    chmod 644 "$package_root/DEBIAN/control"
+    
+    # Debug: Verify permissions are set correctly
+    print_status "Created structure with permissions:"
+    stat -c "%a %n" "$package_root"
+    stat -c "%a %n" "$package_root/DEBIAN"
+    stat -c "%a %n" "$package_root/DEBIAN/control"
+    
+    print_success "Package structure created with correct permissions"
+}
+
+# Function to finalize deb package
+finalize_deb_package() {
+    local package_root="$1"
+    local output_name="$2"
+    
+    print_status "Finalizing .deb package: $output_name"
+    
+    # Debug: Show current permissions before fixing
+    print_status "Current permissions before fixing:"
+    ls -la "$package_root/DEBIAN" || true
+    
+    # Remove any problematic permissions and recreate with correct ones
+    # First, ensure we own the directory structure
+    sudo chown -R $(whoami):$(whoami) "$package_root"
+    
+    # Set permissions without sudo first
+    find "$package_root" -type d -exec chmod 755 {} \;
+    find "$package_root" -type f -exec chmod 644 {} \;
+    
+    # Specifically fix DEBIAN directory permissions
+    chmod 755 "$package_root/DEBIAN"
+    chmod 644 "$package_root/DEBIAN/control"
+    
+    # Debug: Show permissions after our fixes
+    print_status "Permissions after fixing:"
+    ls -la "$package_root/DEBIAN"
+    stat -c "%a %n" "$package_root/DEBIAN"
+    
+    # Now set ownership to root for the package (but keep current user during build)
+    # We'll let fakeroot handle the root ownership simulation
+    
+    # Create .deb package using fakeroot (which simulates root ownership)
+    print_status "Creating .deb package with fakeroot..."
+    if fakeroot dpkg-deb --build "$package_root" "$output_name"; then
+        print_success "Package created successfully"
+    else
+        print_error "Package creation failed"
+        # Try alternative approach without fakeroot
+        print_status "Trying alternative approach with sudo..."
+        sudo chown -R root:root "$package_root"
+        sudo dpkg-deb --build "$package_root" "$output_name"
+        sudo chown $(whoami):$(whoami) "$output_name"
+    fi
+    
+    # Clean up
+    rm -rf "$package_root"
+    
+    print_success "Package $output_name created successfully"
+}
+
 # Function to build libwpe
 build_libwpe() {
     print_status "Building libwpe..."
@@ -339,38 +433,23 @@ build_libwpe() {
     print_status "Creating libwpe .deb package..."
     cd ../..
     
-    # Create package structure
-    mkdir -p libwpe-deb-root/DEBIAN
+    # Create package structure with proper permissions
+    create_deb_structure "libwpe-deb-root" "libwpe-1.0" "1.16.2" "WPE (WebKit Port for Embedded) library for Raspberry Pi 3B+"
+    
+    # Create necessary directories
     mkdir -p libwpe-deb-root/usr/lib/aarch64-linux-gnu
     mkdir -p libwpe-deb-root/usr/include
     mkdir -p libwpe-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig
-    
-    # Create control file
-    cat <<EOF > libwpe-deb-root/DEBIAN/control
-Package: libwpe-1.0
-Version: 1.16.2
-Section: libs
-Priority: optional
-Architecture: arm64
-Maintainer: bhNibir <nibir@example.com>
-Description: WPE (WebKit Port for Embedded) library for Raspberry Pi 3B+
-EOF
     
     # Copy files
     sudo cp -r /usr/lib/aarch64-linux-gnu/libwpe* libwpe-deb-root/usr/lib/aarch64-linux-gnu/
     sudo cp -r /usr/include/wpe-1.0 libwpe-deb-root/usr/include/
     sudo cp -r /usr/lib/aarch64-linux-gnu/pkgconfig/wpe* libwpe-deb-root/usr/lib/aarch64-linux-gnu/pkgconfig/
     
-    # Fix permissions for dpkg-deb
-    sudo chmod 755 libwpe-deb-root/DEBIAN
-    sudo chmod 644 libwpe-deb-root/DEBIAN/control
-    sudo chown -R root:root libwpe-deb-root
-    
-    # Create .deb package
-    fakeroot dpkg-deb --build libwpe-deb-root libwpe-aarch64-rpi3b-v1.16.2.deb
+    # Finalize package
+    finalize_deb_package "libwpe-deb-root" "libwpe-aarch64-rpi3b-v1.16.2.deb"
     
     # Clean up
-    sudo rm -rf libwpe-deb-root
     rm -rf libwpe-1.16.2
     
     print_success "libwpe built and packaged successfully"
@@ -432,38 +511,23 @@ EOF
     print_status "Creating wpebackend-fdo .deb package..."
     cd ../..
     
-    # Create package structure
-    mkdir -p wpebackend-deb-root/DEBIAN
+    # Create package structure with proper permissions
+    create_deb_structure "wpebackend-deb-root" "wpebackend-fdo" "1.16.0" "WPE Backend for FreeDesktop.org for Raspberry Pi 3B+"
+    
+    # Create necessary directories
     mkdir -p wpebackend-deb-root/usr/lib/aarch64-linux-gnu
     mkdir -p wpebackend-deb-root/usr/include
     mkdir -p wpebackend-deb-root/usr/lib/pkgconfig
-    
-    # Create control file
-    cat <<EOF > wpebackend-deb-root/DEBIAN/control
-Package: wpebackend-fdo
-Version: 1.16.0
-Section: libs
-Priority: optional
-Architecture: arm64
-Maintainer: bhNibir <nibir@example.com>
-Description: WPE Backend for FreeDesktop.org for Raspberry Pi 3B+
-EOF
     
     # Copy files
     sudo cp -r /usr/lib/libWPEBackend* wpebackend-deb-root/usr/lib/aarch64-linux-gnu/
     sudo cp -r /usr/include/wpe-fdo-1.0 wpebackend-deb-root/usr/include/
     sudo cp -r /usr/lib/pkgconfig/wpebackend-fdo-1.0.pc wpebackend-deb-root/usr/lib/pkgconfig/
     
-    # Fix permissions for dpkg-deb
-    sudo chmod 755 wpebackend-deb-root/DEBIAN
-    sudo chmod 644 wpebackend-deb-root/DEBIAN/control
-    sudo chown -R root:root wpebackend-deb-root
-    
-    # Create .deb package
-    fakeroot dpkg-deb --build wpebackend-deb-root wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb
+    # Finalize package
+    finalize_deb_package "wpebackend-deb-root" "wpebackend-fdo-aarch64-rpi3b-v1.16.0.deb"
     
     # Clean up
-    sudo rm -rf wpebackend-deb-root
     rm -rf wpebackend-fdo-1.16.0
     
     print_success "wpebackend-fdo built and packaged successfully"
@@ -528,8 +592,9 @@ build_wpewebkit() {
     print_status "Using $PARALLEL_JOBS parallel jobs with load limit $LOAD_LIMIT (available memory: ${AVAILABLE_MEMORY}GB)"
     
     # Build with memory-optimized settings
-    ninja -j$PARALLEL_JOBS -l$LOAD_LIMIT
-    
+    # ninja -j$PARALLEL_JOBS -l$LOAD_LIMIT
+      ninja -j2
+
     # Install
     DESTDIR=$PWD/../deb-root ninja install
     
@@ -537,23 +602,14 @@ build_wpewebkit() {
     print_status "Creating WPE WebKit .deb package..."
     cd ../..
     
-    # Create package structure
-    mkdir -p deb-root/DEBIAN
+    # Create package structure with proper permissions
+    create_deb_structure "deb-root" "wpewebkit" "2.48.4" "WPE WebKit 2.48.4 built for Raspberry Pi 3B+"
+    
+    # Create necessary directories
     mkdir -p deb-root/usr/lib/aarch64-linux-gnu
     mkdir -p deb-root/usr/include
     mkdir -p deb-root/usr/bin
     mkdir -p deb-root/usr/share
-    
-    # Create control file
-    cat <<EOF > deb-root/DEBIAN/control
-Package: wpewebkit
-Version: 2.48.4
-Section: web
-Priority: optional
-Architecture: arm64
-Maintainer: bhNibir <nibir@example.com>
-Description: WPE WebKit 2.48.4 built for Raspberry Pi 3B+
-EOF
     
     # Copy files from the install directory
     sudo cp -r wpewebkit/deb-root/usr/lib/* deb-root/usr/lib/
@@ -561,16 +617,10 @@ EOF
     sudo cp -r wpewebkit/deb-root/usr/bin/* deb-root/usr/bin/ 2>/dev/null || true
     sudo cp -r wpewebkit/deb-root/usr/share/* deb-root/usr/share/ 2>/dev/null || true
     
-    # Fix permissions for dpkg-deb
-    sudo chmod 755 deb-root/DEBIAN
-    sudo chmod 644 deb-root/DEBIAN/control
-    sudo chown -R root:root deb-root
-    
-    # Create .deb package
-    fakeroot dpkg-deb --build deb-root wpewebkit-aarch64-rpi3b-v2.48.4.deb
+    # Finalize package
+    finalize_deb_package "deb-root" "wpewebkit-aarch64-rpi3b-v2.48.4.deb"
     
     # Clean up
-    sudo rm -rf deb-root
     rm -rf wpewebkit
     
     print_success "WPE WebKit built and packaged successfully"

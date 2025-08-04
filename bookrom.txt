@@ -1,0 +1,2 @@
+Upgrade Raspberry Pi OS from Bookworm to Trixie
+https://gist.github.com/jauderho/5f73f16cac28669e56608be14c41006c
