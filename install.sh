@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # YouTube TV Kiosk Installer for Raspberry Pi OS Lite (Bookworm 64-bit)
-# Optimized for 1280x1024 resolution with DRM framebuffer
+# Optimized for 1366x768 resolution with DRM framebuffer
 set -euo pipefail
 [[ $EUID -eq 0 ]] && { echo "Run as a regular user, not root."; exit 1; }
 
@@ -64,16 +64,16 @@ if ! grep -q "dtparam=audio=on" "$CONFIG_FILE"; then
   echo "dtparam=audio=on" | sudo tee -a "$CONFIG_FILE" >/dev/null
 fi
 
-# Add 1280x1024 display configuration
+# Add 1366x768 display configuration
 sudo tee -a "$CONFIG_FILE" >/dev/null <<'EOF'
 
-# Display Configuration for 1280x1024
+# Display Configuration for 1366x768
 hdmi_force_hotplug=1
 disable_overscan=1
 hdmi_group=2
 hdmi_mode=35
-framebuffer_width=1280
-framebuffer_height=1024
+framebuffer_width=1366
+framebuffer_height=768
 EOF
 
 echo ">>> Configuring cmdline.txt..."
@@ -150,7 +150,7 @@ sleep 3
 FB_INFO=$(fbset -s 2>/dev/null || echo "Could not get framebuffer info")
 echo "[INFO] Framebuffer info: $FB_INFO" >> "$LOGFILE"
 
-echo "[INFO] Starting Cog browser for 1280x1024 display..." >> "$LOGFILE"
+echo "[INFO] Starting Cog browser for 1366x768 display..." >> "$LOGFILE"
 
 # Launch cog using drm with mouse and cursor support
 exec /usr/bin/cog \
@@ -170,7 +170,7 @@ sudo chmod +x /usr/local/bin/youtube-kiosk.sh
 echo ">>> Creating systemd service..."
 sudo tee /etc/systemd/system/youtube-kiosk.service >/dev/null <<EOF
 [Unit]
-Description=YouTube TV Kiosk (Cog Browser with WPE) - 1280x1024
+Description=YouTube TV Kiosk (Cog Browser with WPE) - 1366x768
 After=network-online.target sound.target multi-user.target
 Wants=network-online.target
 
@@ -214,7 +214,7 @@ sudo chown "$CURRENT_USER:$CURRENT_USER" /var/log/youtube-kiosk.log
 echo ">>> Installation complete!"
 echo ""
 echo "Display Configuration Applied:"
-echo "  ✓ Resolution: 1280x1024 (hdmi_mode=35)"
+echo "  ✓ Resolution: 1366x768 (hdmi_mode=35)"
 echo "  ✓ DRM framebuffer optimized"
 echo "  ✓ Overscan disabled"
 echo "  ✓ HDMI hotplug forced"
@@ -239,7 +239,7 @@ echo "To verify framebuffer resolution:"
 echo "  fbset -s"
 echo ""
 
-read -p "Reboot now to apply 1280x1024 resolution? (y/N): " -n 1 -r
+read -p "Reboot now to apply 1366x768 resolution? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Rebooting in 3 seconds..."
